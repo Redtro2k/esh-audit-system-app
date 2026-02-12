@@ -11,6 +11,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Pages\Dashboard\Actions\FilterAction;
 use Filament\Pages\Dashboard\Concerns\HasFiltersAction;
 use Filament\Pages\Page;
+use App\Livewire\SummaryAnalytics;
 
 class FindingOverview extends Page
 {
@@ -51,6 +52,7 @@ class FindingOverview extends Page
             AnalyticsOverview::class,
             PerDepartment::class,
             PerStatus::class,
+            SummaryAnalytics::class,
         ];
     }
 }

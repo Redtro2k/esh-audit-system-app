@@ -12,6 +12,7 @@
         "codewithdennis/filament-lucide-icons": "^4.0",
         "devonab/filament-easy-footer": "^2.2",
         "filament/filament": "^5.1",
+        "laravel/ai": "^0.1.3",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
