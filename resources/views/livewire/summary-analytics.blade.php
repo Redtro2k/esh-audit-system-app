@@ -17,5 +17,8 @@
         <x-filament::button wire:click="mostOfConcernFindings" class="mt-4">
             Most of Concern Findings
         </x-filament::button>
+        <x-filament::button wire:click="domainExposureAnalysis" class="mt-4">
+            Domain Exposure Analysis
+        </x-filament::button>
     </x-filament::section>
 </x-filament-widgets::widget>

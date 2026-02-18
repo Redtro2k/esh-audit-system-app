@@ -120,7 +120,9 @@ class ObservationForm
                                     ->multiple()
                                     ->nullable(false)
                                     ->image()
+                                    ->maxSize(1024)
                                     ->imageEditor()
+                                    ->imageEditorMode(2)
                                     ->helperText('Upload one or more concern proof images.')
                             ]),
                         Tab::make('Counter Measure')

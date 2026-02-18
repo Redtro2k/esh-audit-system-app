@@ -18,6 +18,8 @@ use App\Models\Observation;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Carbon;
+use Filament\Actions\ExportAction;
+
 
 class ObservationsTable
 {
@@ -112,6 +114,11 @@ class ObservationsTable
                         'for further discussion' => 'For Further Discussion',
                         'resolved' => 'Resolved',
                     ]),
+                SelectFilter::make('department')
+                    ->label('Department')
+                    ->relationship('department', 'name')
+                    ->searchable()
+                    ->preload(),
                 Filter::make('created_at')
                     ->label('Created Date')
                     ->form([
@@ -174,6 +181,11 @@ class ObservationsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+                    ExportAction::make()
+                        ->label('Export')
+                        ->icon(LucideIcon::FileSpreadsheet)
+                        ->columnMapping(false)
+                        ->exporter(\App\Filament\Exports\ObservationExporter::class),
                 ]),
             ]);
     }

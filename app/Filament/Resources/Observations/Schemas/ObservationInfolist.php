@@ -92,6 +92,15 @@ class ObservationInfolist
                             ->label('Date Captured')
                             ->dateTime('l, F d, Y h:i A')
                             ->placeholder('No Date Captured'),
+                        TextEntry::make('date_resolved')
+                            ->label('Date Resolved')
+                            ->dateTime('l, F d, Y h:i A')
+                            ->icon(LucideIcon::CheckCheck)
+                            ->iconColor('primary')
+                            ->size(TextSize::Large)
+                            ->weight(FontWeight::Bold)
+                            ->color('primary')
+                            ->placeholder('No Date Resolved Captured'),
                         ImageEntry::make('capture_solved')
                             ->extraAttributes([
                                 'alt' => 'Logo',

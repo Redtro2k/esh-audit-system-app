@@ -21,6 +21,9 @@ class EditObservation extends EditRecord
             $data['date_captured'] = Carbon::now('Asia/Manila');
             $data['status'] = 'ongoing';
         }
+        if(auth()->user()->hasRole('auditor') && strtolower($data['status']) === 'resolved') {
+            $data['date_resolved'] = Carbon::now('Asia/Manila');
+        }
         return $data;
     }
 

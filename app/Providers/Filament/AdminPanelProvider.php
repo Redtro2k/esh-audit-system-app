@@ -27,7 +27,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Support\Colors\Color as FilamentColor;
 use App\Filament\Pages\Profile;
 use Illuminate\Support\Facades\Storage;
-
+use Moataz01\FilamentNotificationSound\FilamentNotificationSoundPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -50,6 +50,7 @@ class AdminPanelProvider extends PanelProvider
                     darkColor: FilamentColor::Sky
                 ),
             ])
+            ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->emailVerification()
@@ -83,6 +84,11 @@ class AdminPanelProvider extends PanelProvider
                         ['title' => 'CGV', 'url' => 'https://example.com/cgv'],
                         ['title' => 'Privacy Policy', 'url' => 'https://example.com/privacy-policy']
                     ]),
+                FilamentNotificationSoundPlugin::make()
+                    ->soundPath(Storage::url('Sound/messenger_style_notification.wav'))
+                    ->volume(1.0)
+                    ->showAnimation(true)
+                    ->enabled(true)
             ])
             ->authMiddleware([
                 Authenticate::class,

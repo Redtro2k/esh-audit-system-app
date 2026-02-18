@@ -34,6 +34,16 @@ class ConcernCategoryResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasRole('auditor') ?? false;
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('auditor') ?? false;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema

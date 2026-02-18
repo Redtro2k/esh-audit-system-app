@@ -170,5 +170,69 @@ class SummaryAnalytics extends Widget
             }
     }
 
+    public function domainExposureAnalysis()
+    {
+        $observations = Observation::query()
+            ->whereHas('concernType', function (Builder $query) {
+                $query->whereNull('parent_id');
+            })
+            ->with('concernType')
+            ->get()
+            ->groupBy(fn ($item) => $item->concernType?->name ?? 'Unknown')
+            ->map(function ($group, $name) {
+                return [
+                    'concern_type' => $name,
+                    'count' => $group->count(),
+                ];
+            })
+            ->sortByDesc('count')
+            ->values();
+
+            $prompt = "You are an Audit Analytics AI.
+
+            Task:
+            Perform Domain Exposure Analysis using frequency-based aggregation only.
+
+            Input Data Structure:
+                [
+                    { 'concern_type': 'string', 'count': number }
+                ]
+
+            Instructions:
+                1. Compute total findings.
+                2. Calculate percentage share of each concern_type.
+                3. Identify highest operational exposure.
+                4. Classify exposure using:
+                - High = >40%
+                - Moderate = 20–40%
+                - Low = <20%
+                5. If two or more domains have equal highest count, state they are tied.
+                6. If total findings < 5, mention limited dataset.
+
+                Rules:
+                - Do NOT invent severity scores.
+                - Do NOT assume missing data.
+                - Base exposure strictly on count.
+
+                Required Output Format:
+
+                1. Domain Distribution Table
+                2. Highest Operational Exposure
+                3. Executive Summary (5 sentences max)
+
+                JSON Data:";
+                $prompt .= json_encode($observations->toArray(), JSON_PRETTY_PRINT);
+        try {
+            $response = Prism::text()
+            ->using(Provider::Gemini, 'gemini-2.5-flash-lite')
+            ->withPrompt($prompt)
+            ->generate();
+
+            $this->paragraph = $response->text;
+        } catch (\Throwable $e) {
+            $this->paragraph = 'Failed to generate summary: ' . $e->getMessage();
+        }
+    }
+
     protected string $view = 'livewire.summary-analytics';
 }
