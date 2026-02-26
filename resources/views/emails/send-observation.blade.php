@@ -3,10 +3,15 @@
 
 Amazing Day!
 
-Please be reminded that an audit concern has been raised for your
-<b>{{ $observation->area }}</b>
-under the <b>{{ $observation->pic->department->name }}</b>,
-with <b>{{ $observation->pic->name }}</b> as the assigned PIC.
+This is a reminder that you have a pending ESH(Environment, Safety, Health),
+concern that requires you immediate attention.
+
+Please take necessary action to provide an update within the given timeframe.
+
+Thank you for your cooperation.
+
+Best Regards,<br>
+DESH Team
 
 @component('mail::button', ['url' => route('filament.admin.resources.observations.view', $observation)])
 View Observation

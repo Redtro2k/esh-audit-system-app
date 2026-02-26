@@ -32,10 +32,10 @@ class EditObservation extends EditRecord
         if($this->getRecord()->wasChanged('status')) {
             switch (strtolower($this->getRecord()->status)) {
                 case 'for further discussion':
-                     Mail::to($this->getRecord()->pic->email)->queue(new \App\Mail\ForFutherDiscussion($this->getRecord()));
+                     Mail::to($this->getRecord()->pic->email)->send(new \App\Mail\ForFutherDiscussion($this->getRecord()));
                      break;
                 case 'resolved':
-                    Mail::to($this->getRecord()->pic->email)->queue(new \App\Mail\ForResolved($this->getRecord()));
+                    Mail::to($this->getRecord()->pic->email)->send(new \App\Mail\ForResolved($this->getRecord()));
                     break;
             }
         }

@@ -3,20 +3,21 @@
 namespace App\Livewire;
 
 use App\Models\Observation;
-use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
+use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
 
-class PerDepartment extends ChartWidget
+class PerDepartment extends ApexChartWidget
 {
     use InteractsWithPageFilters;
 
+    protected static ?string $chartId = 'perDepartmentChart';
 
-    protected ?string $heading = 'Findings by Department';
+    protected static ?string $heading = 'Findings by Department';
 
-    protected ?string $description = 'Distribution of observations assigned to each department.';
+    protected static ?string $subheading = 'Distribution of observations assigned to each department.';
 
-    protected function getData(): array
+    protected function getOptions(): array
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
@@ -47,18 +48,27 @@ class PerDepartment extends ChartWidget
         );
 
         return [
+            'chart' => [
+                'type' => 'pie',
+                'height' => 320,
+            ],
+            'series' => $data,
             'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => 'Observations',
-                    'data' => $data,
-                    'backgroundColor' => $colors,
-                ],
+            'colors' => $colors,
+            'legend' => [
+                'position' => 'bottom',
+                'fontSize' => '13px',
+            ],
+            'stroke' => [
+                'width' => 1,
+                'colors' => ['#ffffff'],
+            ],
+            'dataLabels' => [
+                'enabled' => true,
+            ],
+            'noData' => [
+                'text' => 'No observations found for the selected period.',
             ],
         ];
-    }
-    protected function getType(): string
-    {
-        return 'pie';
     }
 }

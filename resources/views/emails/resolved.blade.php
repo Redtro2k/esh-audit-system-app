@@ -1,15 +1,15 @@
 @component('mail::message')
 # Audit Issue Resolved
 
-Good day,
+Amazing Day!
 
-The audit issue you submitted regarding
-<b>{{ $observation->area }}</b>
-under the <b>{{ $observation->pic->department->name }}</b> department, with <b>{{ $observation->pic->name }}</b> as the assigned PIC,
+We Would like to inform you that the ESH(Environment, Safety, Health) concern in
+your department has been successfully resolved.
 
-has now been **resolved**.
+Thank you for your cooperation and commitment to maintaining a safe and healthy workplace.
 
-After review and necessary action, the matter has been addressed accordingly. If you believe further clarification or follow-up is required, please feel free to coordinate with the assigned department.
+Best regards,<br>
+DESH Team
 
 @component('mail::button', ['url' => route('filament.admin.resources.observations.view', $observation)])
 View Observation

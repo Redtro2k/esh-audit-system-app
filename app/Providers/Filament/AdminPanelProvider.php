@@ -12,12 +12,10 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Openplain\FilamentShadcnTheme\Color;
 use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -28,13 +26,15 @@ use Filament\Support\Colors\Color as FilamentColor;
 use App\Filament\Pages\Profile;
 use Illuminate\Support\Facades\Storage;
 use Moataz01\FilamentNotificationSound\FilamentNotificationSoundPlugin;
+use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
+use Hammadzafar05\MobileBottomNav\MobileBottomNav;
+
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->registration()
             ->brandName('ESH AUDIT')
             ->default()
             ->id('admin')
@@ -43,10 +43,10 @@ class AdminPanelProvider extends PanelProvider
             ->profile(Profile::class)
             ->login(NewLogin::class)
             ->topbar(false)
-            ->registration(NewRegistration::class)
+            // ->registration(NewRegistration::class)
             ->colors([
                 'primary' =>Color::adaptive(
-                    lightColor: FilamentColor::Indigo,
+                lightColor: FilamentColor::Indigo,
                     darkColor: FilamentColor::Sky
                 ),
             ])
@@ -77,6 +77,8 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->plugins([
+                FilamentApexChartsPlugin::make(),
+                MobileBottomNav::make(),
                 EasyFooterPlugin::make()
                     ->withLogo(Storage::url('Images/Logo_desktop.png'))
                     ->withLinks([

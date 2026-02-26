@@ -3,19 +3,22 @@
 namespace App\Livewire;
 
 use App\Models\Observation;
-use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
+use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
 
-class PerStatus extends ChartWidget
+
+class PerStatus extends ApexChartWidget
 {
     use InteractsWithPageFilters;
 
-    protected ?string $heading = 'Per Status';
+    protected static ?string $chartId = 'perStatusChart';
 
-    protected ?string $description = 'Distribution of observations across current statuses.';
+    protected static ?string $heading = 'Per Status';
 
-    protected function getData(): array
+    protected static ?string $subheading = 'Distribution of observations across current statuses.';
+
+    protected function getOptions(): array
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
@@ -47,19 +50,27 @@ class PerStatus extends ChartWidget
         ];
 
         return [
+            'chart' => [
+                'type' => 'pie',
+                'height' => 320,
+            ],
+            'series' => $data,
             'labels' => $labels,
-            'datasets' => [
-                [
-                    'label' => 'Observations',
-                    'data' => $data,
-                    'backgroundColor' => $colors,
-                ],
+            'colors' => $colors,
+            'legend' => [
+                'position' => 'bottom',
+                'fontSize' => '13px',
+            ],
+            'stroke' => [
+                'width' => 1,
+                'colors' => ['#ffffff'],
+            ],
+            'dataLabels' => [
+                'enabled' => true,
+            ],
+            'noData' => [
+                'text' => 'No observations found for the selected period.',
             ],
         ];
-    }
-
-    protected function getType(): string
-    {
-        return 'pie';
     }
 }

@@ -26,6 +26,6 @@ class CreateObservation extends CreateRecord
     protected function afterCreate(): void
     {
         $observation = Observation::with('pic', 'auditor', 'pic.department')->find($this->record->id);
-        Mail::to($observation->pic->email)->queue(new \App\Mail\SendObservation($observation));
+        Mail::to($observation->pic->email)->send(new \App\Mail\SendObservation($observation));
     }
 }

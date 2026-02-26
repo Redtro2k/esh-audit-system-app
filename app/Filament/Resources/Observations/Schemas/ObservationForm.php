@@ -120,6 +120,9 @@ class ObservationForm
                                     ->multiple()
                                     ->nullable(false)
                                     ->image()
+                                    ->disk('public') // 🔥 VERY IMPORTANT
+                                    ->directory('concerns') // optional but recommended
+                                    ->visibility('public') // 🔥 ensure accessible
                                     ->maxSize(1024)
                                     ->imageEditor()
                                     ->imageEditorMode(2)

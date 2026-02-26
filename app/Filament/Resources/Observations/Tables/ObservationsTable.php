@@ -163,10 +163,10 @@ class ObservationsTable
                            $observation = Observation::with('pic', 'auditor', 'pic.department')->find($record->id);
                            switch (strtolower($record->status)) {
                                case 'for further discussion':
-                                    Mail::to($observation->pic->email)->queue(new \App\Mail\ForFutherDiscussion($observation));
+                                    Mail::to($observation->pic->email)->send(new \App\Mail\ForFutherDiscussion($observation));
                                     break;
                                case 'pending':
-                                    Mail::to($observation->pic->email)->queue(new \App\Mail\SendObservation($observation));
+                                    Mail::to($observation->pic->email)->send(new \App\Mail\SendObservation($observation));
                                     break;
                            }
                     }),
