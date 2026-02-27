@@ -180,7 +180,9 @@ class ObservationsTable
                 EditAction::make()
                     ->iconButton()
                     ->tooltip('Edit observation')
-                    ->hidden(fn($record) => auth()->user()->hasRole('gm') || strtolower($record->status) === 'resolved'),
+                    ->hidden(fn ($record) => auth()->user()->hasRole('gm')
+                        || strtolower((string) $record->status) === 'resolved'
+                        || (int) $record->pic_id !== (int) auth()->id()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

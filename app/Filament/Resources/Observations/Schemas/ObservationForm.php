@@ -126,7 +126,8 @@ class ObservationForm
                                     ->maxSize(1024)
                                     ->imageEditor()
                                     ->imageEditorMode(2)
-                                    ->helperText('Upload one or more concern proof images.')
+                                    ->helperText('Upload one or more concern proof images.'),
+
                             ]),
                         Tab::make('Counter Measure')
                             ->hidden(fn($q) => auth()->user()->hasRole('auditor'))

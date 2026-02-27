@@ -5,10 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\CategoryConcern;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Kirschbaum\Commentions\Contracts\Commentable;
+use Kirschbaum\Commentions\HasComments;
 
-class Observation extends Model
+
+class Observation extends Model implements Commentable
 {
-    //
+    use HasComments;
+
     protected $guarded = [];
 
     protected $casts = [

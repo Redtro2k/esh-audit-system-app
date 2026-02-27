@@ -11,8 +11,10 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Kirschbaum\Commentions\Contracts\Commenter;
 
-class User extends Authenticatable implements HasAvatar, MustVerifyEmail
+
+class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commenter
 {
     use HasFactory, Notifiable, TwoFactorAuthenticatable, HasRoles;
     protected $fillable = [

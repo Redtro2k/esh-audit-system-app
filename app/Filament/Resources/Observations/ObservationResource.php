@@ -18,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Enum\NavigationGroup;
+use Kirschbaum\Commentions\CommentSubscription;
 use UnitEnum;
 
 class ObservationResource extends Resource
@@ -44,9 +45,24 @@ class ObservationResource extends Resource
     }
     public static function getEloquentQuery(): Builder
     {
-         return parent::getEloquentQuery()->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
-             $query->where('pic_id', auth()->id());
-         });
+        return parent::getEloquentQuery()->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
+            $user = auth()->user();
+            $subscriptionsTable = (new CommentSubscription())->getTable();
+
+            $query->where(function (Builder $scoped) use ($user, $subscriptionsTable) {
+                $scoped
+                    ->where('pic_id', $user->getKey())
+                    ->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
+                        $subQuery
+                            ->selectRaw('1')
+                            ->from($subscriptionsTable)
+                            ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
+                            ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
+                            ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
+                            ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
+                    });
+            });
+        });
     }
 
     public static function form(Schema $schema): Schema

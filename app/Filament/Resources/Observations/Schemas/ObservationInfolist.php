@@ -10,6 +10,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
+use Kirschbaum\Commentions\Filament\Infolists\Components\CommentsEntry;
+use App\Models\User;
 
 class ObservationInfolist
 {
@@ -111,6 +113,20 @@ class ObservationInfolist
                             ->ring(5)
                             ->label('Proof Solved'),
                     ]),
+                Section::make('Comments')
+                    ->components([
+                        CommentsEntry::make('comments')
+                            ->label('Comments')
+                            ->mentionables(User::all())
+                            ->placeholder('No Comments')
+                            ->loadMoreIncrementsBy(8)
+                            ->loadMoreLabel('Show older')
+                            ->perPage(10)
+                            ->tipTapCssClasses('prose max-w-none focus:outline-none p-4')
+                            ->extraAttributes([
+                                'class' => 'max-h-96 overflow-y-auto',
+                            ])
+                    ])
             ]);
     }
 }
