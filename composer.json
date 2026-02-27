@@ -20,7 +20,6 @@
         "leandrocfe/filament-apex-charts": "5.0",
         "livewire/flux": "^2.9.0",
         "livewire/livewire": "^4.0",
-        "moataz-01/filament-notification-sound": "^1.0",
         "openplain/filament-shadcn-theme": "^1.1",
         "spatie/laravel-permission": "^6.24"
     },

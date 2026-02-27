@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\Observations\Pages;
 
 use App\Filament\Resources\Observations\ObservationResource;
+use App\Mail\ForFutherDiscussion;
+use App\Mail\SendObservation;
 use App\Models\Observation;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 class ViewObservation extends ViewRecord
 {
@@ -34,6 +37,26 @@ class ViewObservation extends ViewRecord
                 ->label('Back to list')
                 ->icon(LucideIcon::ArrowLeft)
                 ->url(ObservationResource::getUrl('index')),
+            Action::make('nudge')
+                ->icon(LucideIcon::BellRing)
+                ->label('Nudge')
+                ->requiresConfirmation()
+                ->hidden(fn (): bool => !auth()->user()->hasRole('auditor') || strtolower((string) $this->record->status) === 'resolved')
+                ->modalHeading('Send reminder?')
+                ->modalDescription('This will email the PIC with the observation details.')
+                ->action(function (): void {
+                    /** @var Observation $observation */
+                    $observation = Observation::with('pic', 'auditor', 'pic.department')->findOrFail($this->record->id);
+
+                    switch (strtolower((string) $observation->status)) {
+                        case 'for further discussion':
+                            Mail::to($observation->pic->email)->send(new ForFutherDiscussion($observation));
+                            break;
+                        case 'pending':
+                            Mail::to($observation->pic->email)->send(new SendObservation($observation));
+                            break;
+                    }
+                }),
             EditAction::make()
                 ->label('Update')
                 ->icon(LucideIcon::ClipboardPen),

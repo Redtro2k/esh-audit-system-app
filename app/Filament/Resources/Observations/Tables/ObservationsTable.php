@@ -106,14 +106,18 @@ class ObservationsTable
 //                ->native(false)
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'ongoing' => 'Ongoing',
-                        'for further discussion' => 'For Further Discussion',
-                        'resolved' => 'Resolved',
-                    ]),
+                Filter::make('pending')
+                    ->label('Pending')
+                    ->query(fn ($query) => $query->where('status', 'pending')),
+                Filter::make('ongoing')
+                    ->label('Ongoing')
+                    ->query(fn ($query) => $query->where('status', 'ongoing')),
+                Filter::make('for_further_discussion')
+                    ->label('For Further Discussion')
+                    ->query(fn ($query) => $query->where('status', 'for further discussion')),
+                Filter::make('resolved')
+                    ->label('Resolved')
+                    ->query(fn ($query) => $query->where('status', 'resolved')),
                 SelectFilter::make('department')
                     ->label('Department')
                     ->relationship('department', 'name')
@@ -156,7 +160,7 @@ class ObservationsTable
                     ->iconButton()
                     ->tooltip('Send reminder to PIC')
                     ->requiresConfirmation()
-                    ->hidden(fn ($record) => strtolower($record->status) === 'resolved')
+                    ->hidden(fn ($record) => !auth()->user()->hasRole('auditor') || strtolower($record->status) === 'resolved')
                     ->modalHeading('Send reminder?')
                     ->modalDescription('This will email the PIC with the observation details.')
                     ->action(function ($record){

@@ -25,7 +25,6 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Support\Colors\Color as FilamentColor;
 use App\Filament\Pages\Profile;
 use Illuminate\Support\Facades\Storage;
-use Moataz01\FilamentNotificationSound\FilamentNotificationSoundPlugin;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use Hammadzafar05\MobileBottomNav\MobileBottomNav;
 
@@ -86,11 +85,6 @@ class AdminPanelProvider extends PanelProvider
                         ['title' => 'CGV', 'url' => 'https://example.com/cgv'],
                         ['title' => 'Privacy Policy', 'url' => 'https://example.com/privacy-policy']
                     ]),
-                FilamentNotificationSoundPlugin::make()
-                    ->soundPath(Storage::url('Sound/messenger_style_notification.wav'))
-                    ->volume(1.0)
-                    ->showAnimation(true)
-                    ->enabled(true)
             ])
             ->authMiddleware([
                 Authenticate::class,
