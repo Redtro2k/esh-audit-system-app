@@ -6,18 +6,24 @@ use App\Models\ConcernCategory;
 use App\Models\Department;
 use App\Models\User;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Grid;
+use Prism\Prism\Enums\Provider;
+use Prism\Prism\Facades\Prism;
+use Prism\Prism\ValueObjects\Media\Image;
+use Prism\Prism\ValueObjects\Messages\UserMessage;
 
 class ObservationForm
 {
@@ -138,6 +144,9 @@ class ObservationForm
                                     ->multiple()
                                     ->nullable(false)
                                     ->image()
+                                    ->disk('public')
+                                    ->directory('solved')
+                                    ->visibility('public')
                                     ->imageEditor()
                                     ->helperText('Upload one or more solved proof images.')
                                     ->required(auth()->user()->hasRole('remediator')),
@@ -146,10 +155,130 @@ class ObservationForm
                                         Textarea::make('counter_measure')
                                             ->label('Counter Measure')
                                             ->placeholder('Describe corrective action taken')
+                                            ->hintAction(
+                                                Action::make('generateCounterMeasure')
+                                                    ->label('Improve writing')
+                                                    ->icon(LucideIcon::Sparkles)
+                                                    ->color('gray')
+                                                    ->action(function (Get $get, Set $set): void {
+                                                        $currentCounterMeasure = trim((string) ($get('counter_measure') ?? ''));
+                                                        $imagePaths = collect($get('capture_solved') ?? [])
+                                                            ->filter(fn ($path) => filled($path))
+                                                            ->values();
+
+                                                        if ($currentCounterMeasure === '') {
+                                                            Notification::make()
+                                                                ->title('Write the counter measure first')
+                                                                ->body('Add your draft sentence first, then use AI to improve the wording.')
+                                                                ->warning()
+                                                                ->send();
+
+                                                            return;
+                                                        }
+
+                                                        try {
+                                                            $images = $imagePaths
+                                                                ->take(3)
+                                                                ->map(fn (string $path) => Image::fromStoragePath($path, 'public'))
+                                                                ->all();
+
+                                                            $prompt = self::buildCounterMeasurePrompt($get, $currentCounterMeasure);
+
+                                                            $response = Prism::text()
+                                                                ->using(Provider::Gemini, 'gemini-2.5-flash-lite')
+                                                                ->withMessages([
+                                                                    new UserMessage($prompt, $images),
+                                                                ])
+                                                                ->generate();
+
+                                                            $generatedText = trim($response->text);
+
+                                                            if ($generatedText === '') {
+                                                                throw new \RuntimeException('The AI returned an empty response.');
+                                                            }
+
+                                                            $set('counter_measure', $generatedText);
+
+                                                            Notification::make()
+                                                                ->title('Counter measure improved')
+                                                                ->success()
+                                                                ->send();
+                                                        } catch (\Throwable $exception) {
+                                                            Notification::make()
+                                                                ->title('Generation failed')
+                                                                ->body($exception->getMessage())
+                                                                ->danger()
+                                                                ->send();
+                                                        }
+                                                    })
+                                            )
+                                            ->hint('Use AI to improve your wording while keeping the same meaning.')
                                             ->required(auth()->user()->hasRole('remediator')),
                                         Textarea::make('remarks')
                                             ->label('Remarks')
                                             ->placeholder('Add supporting notes')
+                                            ->hintAction(
+                                                Action::make('improveRemarks')
+                                                    ->label('Improve writing')
+                                                    ->icon(LucideIcon::Sparkles)
+                                                    ->color('gray')
+                                                    ->action(function (Get $get, Set $set): void {
+                                                        $currentRemarks = trim((string) ($get('remarks') ?? ''));
+                                                        $imagePaths = collect($get('capture_solved') ?? [])
+                                                            ->filter(fn ($path) => filled($path))
+                                                            ->values();
+
+                                                        if ($currentRemarks === '') {
+                                                            Notification::make()
+                                                                ->title('Write the remarks first')
+                                                                ->body('Add your draft remarks first, then use AI to improve the wording.')
+                                                                ->warning()
+                                                                ->send();
+
+                                                            return;
+                                                        }
+
+                                                        try {
+                                                            $images = $imagePaths
+                                                                ->take(3)
+                                                                ->map(fn (string $path) => Image::fromStoragePath($path, 'public'))
+                                                                ->all();
+
+                                                            $prompt = self::buildWritingImprovementPrompt(
+                                                                get: $get,
+                                                                fieldLabel: 'Remarks',
+                                                                draftText: $currentRemarks
+                                                            );
+
+                                                            $response = Prism::text()
+                                                                ->using(Provider::Gemini, 'gemini-2.5-flash-lite')
+                                                                ->withMessages([
+                                                                    new UserMessage($prompt, $images),
+                                                                ])
+                                                                ->generate();
+
+                                                            $generatedText = trim($response->text);
+
+                                                            if ($generatedText === '') {
+                                                                throw new \RuntimeException('The AI returned an empty response.');
+                                                            }
+
+                                                            $set('remarks', $generatedText);
+
+                                                            Notification::make()
+                                                                ->title('Remarks improved')
+                                                                ->success()
+                                                                ->send();
+                                                        } catch (\Throwable $exception) {
+                                                            Notification::make()
+                                                                ->title('Generation failed')
+                                                                ->body($exception->getMessage())
+                                                                ->danger()
+                                                                ->send();
+                                                        }
+                                                    })
+                                            )
+                                            ->hint('Use AI to improve your wording while keeping the same meaning.')
                                             ->required(auth()->user()->hasRole('remediator'))
                                     ])
 
@@ -157,5 +286,58 @@ class ObservationForm
                     ])
             ]);
     }
-    //pending, ongoing,
+
+    private static function buildCounterMeasurePrompt(Get $get, string $draftCounterMeasure): string
+    {
+        return self::buildWritingImprovementPrompt(
+            get: $get,
+            fieldLabel: 'Counter Measure',
+            draftText: $draftCounterMeasure
+        );
+    }
+
+    private static function buildWritingImprovementPrompt(Get $get, string $fieldLabel, string $draftText): string
+    {
+        $context = array_filter([
+            'Audit Area' => $get('area'),
+            'Concern Category' => self::resolveConcernCategoryName($get('concern_type')),
+            'Concern' => $get('concern'),
+            'Current Status' => $get('status'),
+        ], fn ($value) => filled($value));
+
+        $contextLines = collect($context)
+            ->map(fn ($value, $label) => "{$label}: {$value}")
+            ->implode("\n");
+
+        return <<<PROMPT
+You are assisting with an internal audit observation update.
+
+Your task is to improve the wording of the user's {$fieldLabel} text.
+
+Rules:
+- Preserve the original meaning.
+- Improve grammar, clarity, and professionalism.
+- Keep the tone practical, concise, and audit-ready.
+- Do not invent facts or actions that are not already implied by the user's draft.
+- If images are available, use them only to keep the wording aligned with the evidence.
+- Do not mention that the text was AI-generated.
+- Do not include bullet points.
+- Return only the improved {$fieldLabel} text.
+
+Observation Context:
+{$contextLines}
+
+User Draft:
+{$draftText}
+PROMPT;
+    }
+
+    private static function resolveConcernCategoryName(mixed $concernTypeId): ?string
+    {
+        if (blank($concernTypeId)) {
+            return null;
+        }
+
+        return ConcernCategory::query()->whereKey($concernTypeId)->value('name');
+    }
 }

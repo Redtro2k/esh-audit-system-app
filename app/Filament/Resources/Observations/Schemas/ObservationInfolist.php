@@ -12,6 +12,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
 use Kirschbaum\Commentions\Filament\Infolists\Components\CommentsEntry;
 use App\Models\User;
+use App\Models\ConcernCategory;
 
 class ObservationInfolist
 {
@@ -38,6 +39,9 @@ class ObservationInfolist
                                     ->label('Concern of Category')
                                     ->size(TextSize::Large)
                                     ->weight(FontWeight::Bold)
+                                    ->helperText(fn($record) => $record->concern_type
+                                                ? implode(', ', ConcernCategory::query()->where('parent_id', $record->concern_type)->pluck('name')->toArray())
+                                                : 'Select a category to view available concerns.')
                                     ->color('primary'),
                                TextEntry::make('concern')
                                     ->label('Concern / Remarks')
@@ -68,6 +72,7 @@ class ObservationInfolist
                     ->columns()
                     ->schema([
                         Grid::make(3)
+                            ->columnSpanFull()
                             ->schema([
                                 TextEntry::make('pic.department.name')->label('Department Name')
                                     ->icon(LucideIcon::Building)
@@ -86,10 +91,15 @@ class ObservationInfolist
                                     ->weight(FontWeight::Bold)
                                     ->color('primary')
                                     ->label('Audit Area')
-                            ])
-                        ->columnSpanFull(),
+                            ]),
                         TextEntry::make('remarks')
-                            ->placeholder('No Remarks'),
+                            ->placeholder('No Remarks')
+                            ->label('Remarks')
+                            ->html(),
+                        TextEntry::make('counter_measure')
+                            ->placeholder('No Counter Measure')
+                            ->label('Counter Measure')
+                            ->html(),
                         TextEntry::make('date_captured')
                             ->label('Date Captured')
                             ->dateTime('l, F d, Y h:i A')

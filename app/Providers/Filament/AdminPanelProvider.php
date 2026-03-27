@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\NewDashboard;
 use App\Filament\Pages\NewLogin;
 use App\Filament\Pages\NewRegistration;
+use App\Filament\Pages\Profile;
 use App\Filament\Widgets\LatestOngoing;
 use App\Filament\Widgets\StatsOverview;
 use Devonab\FilamentEasyFooter\EasyFooterPlugin;
@@ -23,7 +24,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Support\Colors\Color as FilamentColor;
-use App\Filament\Pages\Profile;
+use CharrafiMed\GlobalSearchModal\GlobalSearchModalPlugin;
 use Illuminate\Support\Facades\Storage;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use Hammadzafar05\MobileBottomNav\MobileBottomNav;
@@ -41,7 +42,9 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->profile(Profile::class)
             ->login(NewLogin::class)
-            ->topbar(false)
+            ->globalSearchKeyBindings(['mod+k'])
+            ->globalSearchFieldKeyBindingSuffix()
+            ->topbar()
             // ->registration(NewRegistration::class)
             ->colors([
                 'primary' =>Color::adaptive(
@@ -78,6 +81,7 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentApexChartsPlugin::make(),
                 MobileBottomNav::make(),
+                GlobalSearchModalPlugin::make(),
                 EasyFooterPlugin::make()
                     ->withLogo(Storage::url('Images/Logo_desktop.png'))
                     ->withLinks([

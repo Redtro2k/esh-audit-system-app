@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Observation;
+use App\Support\ObservationAnalyticsCache;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
@@ -25,19 +26,28 @@ class PerStatus extends ApexChartWidget
 
         $statusOrder = ['pending', 'ongoing', 'for further discussion', 'resolved'];
 
-        $counts = Observation::query()
-            ->when($startDate, fn (Builder $query) => $query->whereDate('observations.created_at', '>=', $startDate))
-            ->when($endDate, fn (Builder $query) => $query->whereDate('observations.created_at', '<=', $endDate))
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status');
+        $counts = ObservationAnalyticsCache::remember(
+            'findings-per-status',
+            [
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+            ],
+            now()->addMinutes(10),
+            fn () => Observation::query()
+                ->when($startDate, fn (Builder $query) => $query->whereDate('observations.created_at', '>=', $startDate))
+                ->when($endDate, fn (Builder $query) => $query->whereDate('observations.created_at', '<=', $endDate))
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status')
+                ->map(fn ($total) => (int) $total)
+                ->all()
+        );
 
         $labels = [];
         $data = [];
 
         foreach ($statusOrder as $status) {
-            $total = (int) ($counts[$status]->total ?? 0);
+            $total = (int) ($counts[$status] ?? 0);
             $labels[] = sprintf('%s (%d)', ucwords($status), $total);
             $data[] = $total;
         }

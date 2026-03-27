@@ -61,9 +61,10 @@ class ViewObservation extends ViewRecord
             EditAction::make()
                 ->label('Update')
                 ->icon(LucideIcon::ClipboardPen)
-                ->hidden(fn ($record) => auth()->user()->hasRole('gm')
-                    || strtolower((string) $record->status) === 'resolved'
-                    || (int) $record->pic_id !== (int) auth()->id()),
+                ->hidden(fn ($record) => !auth()->user()->hasRole('auditor')
+                    && (auth()->user()->hasRole('gm')
+                        || strtolower((string) $record->status) === 'resolved'
+                        || (int) $record->pic_id !== (int) auth()->id())),
 //            Action::make('update-status')
 //                ->hidden(fn(Observation $observation) => auth()->user()->hasRole('remediator') && $observation->status === 'ongoing')
 //                ->modal()

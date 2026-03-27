@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
@@ -20,6 +21,7 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
     protected $fillable = [
         'name',
         'email',
+        'avatar_url',
         'password',
         'department',
         'username'
@@ -48,16 +50,29 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
 
     public function getFilamentAvatarUrl(): ?string
     {
-        return $this->avatar_url;
+        return $this->resolveAvatarUrl();
     }
 
     public function getCommenterAvatar(): ?string
     {
-        return $this->avatar_url;
+        return $this->resolveAvatarUrl();
     }
 
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    protected function resolveAvatarUrl(): ?string
+    {
+        if (! $this->avatar_url) {
+            return null;
+        }
+
+        if (Str::startsWith($this->avatar_url, ['http://', 'https://'])) {
+            return $this->avatar_url;
+        }
+
+        return Storage::disk('public')->url($this->avatar_url);
     }
 }

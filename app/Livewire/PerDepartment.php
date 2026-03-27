@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Observation;
+use App\Support\ObservationAnalyticsCache;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
@@ -22,20 +23,34 @@ class PerDepartment extends ApexChartWidget
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
 
-        $counts = Observation::query()
-            ->selectRaw('departments.name as department, count(*) as total')
-            ->when($startDate, fn (Builder $query) => $query->whereDate('observations.created_at', '>=', $startDate))
-            ->when($endDate, fn (Builder $query) => $query->whereDate('observations.created_at', '<=', $endDate))
-            ->join('users', 'observations.pic_id', '=', 'users.id')
-            ->join('departments', 'users.department_id', '=', 'departments.id')
-            ->groupBy('departments.name')
-            ->orderBy('departments.name')
-            ->get();
+        $counts = ObservationAnalyticsCache::remember(
+            'findings-per-department',
+            [
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+            ],
+            now()->addMinutes(10),
+            fn () => Observation::query()
+                ->selectRaw('departments.name as department, count(*) as total')
+                ->when($startDate, fn (Builder $query) => $query->whereDate('observations.created_at', '>=', $startDate))
+                ->when($endDate, fn (Builder $query) => $query->whereDate('observations.created_at', '<=', $endDate))
+                ->join('users', 'observations.pic_id', '=', 'users.id')
+                ->join('departments', 'users.department_id', '=', 'departments.id')
+                ->groupBy('departments.name')
+                ->orderBy('departments.name')
+                ->get()
+                ->map(fn ($row) => [
+                    'department' => $row->department,
+                    'total' => (int) $row->total,
+                ])
+                ->all()
+        );
 
-        $labels = $counts->map(
-            fn ($row) => sprintf('%s (%d)', $row->department, (int) $row->total)
-        )->all();
-        $data = $counts->pluck('total')->all();
+        $labels = array_map(
+            fn (array $row) => sprintf('%s (%d)', $row['department'], $row['total']),
+            $counts
+        );
+        $data = array_map(fn (array $row) => $row['total'], $counts);
 
         $palette = [
             '#2563EB', '#F59E0B', '#10B981', '#EF4444', '#8B5CF6', '#14B8A6',

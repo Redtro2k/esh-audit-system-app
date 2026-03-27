@@ -34,6 +34,8 @@ class ConcernCategoryResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static bool $isGloballySearchable = false;
+
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->user()?->hasRole('auditor') ?? false;
