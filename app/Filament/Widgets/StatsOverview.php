@@ -84,7 +84,13 @@ class StatsOverview extends StatsOverviewWidget
 
     protected function getTabUrl(string $tab): string
     {
-        return url('/admin/observations?tab=' . $tab);
+        return url('/admin/observations?' . http_build_query([
+            'filters' => [
+                $tab => [
+                    'isActive' => true,
+                ],
+            ],
+        ]));
     }
 
     protected function getHeading(): string
