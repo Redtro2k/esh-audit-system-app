@@ -6,6 +6,8 @@ use App\Filament\Pages\NewDashboard;
 use App\Filament\Pages\NewLogin;
 use App\Filament\Pages\NewRegistration;
 use App\Filament\Pages\Profile;
+use App\Filament\Resources\Teams\TeamResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Filament\Widgets\LatestOngoing;
 use App\Filament\Widgets\StatsOverview;
 use Devonab\FilamentEasyFooter\EasyFooterPlugin;
@@ -53,6 +55,10 @@ class AdminPanelProvider extends PanelProvider
                 ),
             ])
             ->databaseNotifications()
+            ->resources([
+                TeamResource::class,
+                UserResource::class,
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->emailVerification()

@@ -121,12 +121,7 @@ class ObservationForm
                                             ->inlineLabel(false)
                                             ->inline()
                                             ->nullable(false)
-                                            ->options([
-                                                'pending' => 'Pending',
-                                                'ongoing' => 'Ongoing',
-                                                'for further discussion' => 'For Further Discussion',
-                                                'resolved' => 'Resolved',
-                                            ]),
+                                            ->options(self::statusOptions()),
                                     DateTimePicker::make('target_date')
                                             ->label('Target Date')
                                             ->placeholder('Select target date and time')
@@ -148,7 +143,7 @@ class ObservationForm
 
                             ]),
                         Tab::make('Counter Measure')
-                            ->hidden(fn($q) => auth()->user()->hasRole('auditor'))
+                            ->hidden(fn($q) => auth()->user()->hasAnyRole(['auditor', 'contributor']))
                             ->icon(LucideIcon::ClipboardPen)
                             ->schema([
                                 FileUpload::make('capture_solved')
@@ -308,6 +303,23 @@ class ObservationForm
             fieldLabel: 'Counter Measure',
             draftText: $draftCounterMeasure
         );
+    }
+
+    private static function statusOptions(): array
+    {
+        if (auth()->user()->hasRole('contributor')) {
+            return [
+                'pending' => 'Pending',
+                'ongoing' => 'Ongoing',
+            ];
+        }
+
+        return [
+            'pending' => 'Pending',
+            'ongoing' => 'Ongoing',
+            'for further discussion' => 'For Further Discussion',
+            'resolved' => 'Resolved',
+        ];
     }
 
     private static function buildWritingImprovementPrompt(Get $get, string $fieldLabel, string $draftText): string

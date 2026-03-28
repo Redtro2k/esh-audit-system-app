@@ -41,28 +41,37 @@ class ObservationResource extends Resource
         if(auth()->user()->hasRole('remediator')) {
             return static::getModel()::where('status', 'ongoing')->where('pic_id', auth()->id())->count() > 0 ? (string)static::getModel()::where('status', 'pending')->where('pic_id', auth()->id())->count() . ' Pending': null;
         }
+        if (auth()->user()->hasRole('contributor')) {
+            return static::getModel()::where('status', 'ongoing')->where('auditor_id', auth()->id())->count() > 0
+                ? (string) static::getModel()::where('status', 'pending')->where('auditor_id', auth()->id())->count() . ' Pending'
+                : null;
+        }
         return static::getModel()::where('status', 'ongoing')->count() > 0 ? (string)static::getModel()::where('status', 'pending')->count() . ' Pending': null;
     }
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
-            $user = auth()->user();
-            $subscriptionsTable = (new CommentSubscription())->getTable();
+        return parent::getEloquentQuery()
+            ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
+                $user = auth()->user();
+                $subscriptionsTable = (new CommentSubscription())->getTable();
 
-            $query->where(function (Builder $scoped) use ($user, $subscriptionsTable) {
-                $scoped
-                    ->where('pic_id', $user->getKey())
-                    ->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
-                        $subQuery
-                            ->selectRaw('1')
-                            ->from($subscriptionsTable)
-                            ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
-                            ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
-                            ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
-                            ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
-                    });
+                $query->where(function (Builder $scoped) use ($user, $subscriptionsTable) {
+                    $scoped
+                        ->where('pic_id', $user->getKey())
+                        ->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
+                            $subQuery
+                                ->selectRaw('1')
+                                ->from($subscriptionsTable)
+                                ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
+                                ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
+                                ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
+                                ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
+                        });
+                });
+            })
+            ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
+                $query->where('auditor_id', auth()->id());
             });
-        });
     }
 
     public static function form(Schema $schema): Schema

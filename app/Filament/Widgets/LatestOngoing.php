@@ -50,7 +50,10 @@ class LatestOngoing extends TableWidget
             ->with(['pic.department', 'auditor'])
             ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
                 $query->where('pic_id', auth()->id());
-                    }))
+            })
+            ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
+                $query->where('auditor_id', auth()->id());
+            }))
                     ->emptyStateHeading('No ongoing audits')
                     ->emptyStateDescription('Try adjusting the date range or check back later.')
                     ->columns([

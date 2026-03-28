@@ -24,6 +24,8 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
         'avatar_url',
         'password',
         'department',
+        'department_id',
+        'team_id',
         'username'
     ];
     protected $hidden = [
@@ -63,10 +65,15 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
         return $this->belongsTo(Department::class, 'department_id');
     }
 
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class, 'team_id');
+    }
+
     protected function resolveAvatarUrl(): ?string
     {
         if (! $this->avatar_url) {
-            return null;
+            return $this->defaultAvatarUrl();
         }
 
         if (Str::startsWith($this->avatar_url, ['http://', 'https://'])) {
@@ -74,5 +81,12 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
         }
 
         return Storage::disk('public')->url($this->avatar_url);
+    }
+
+    protected function defaultAvatarUrl(): string
+    {
+        $name = trim((string) $this->name) !== '' ? $this->name : $this->username;
+
+        return 'https://ui-avatars.com/api/?name=' . urlencode((string) $name) . '&background=E5E7EB&color=111827';
     }
 }

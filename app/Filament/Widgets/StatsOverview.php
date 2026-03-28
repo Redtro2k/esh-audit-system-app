@@ -60,6 +60,7 @@ class StatsOverview extends StatsOverviewWidget
                 'endDate' => $endDate,
                 'userId' => auth()->id(),
                 'isRemediator' => auth()->user()?->hasRole('remediator') ?? false,
+                'isContributor' => auth()->user()?->hasRole('contributor') ?? false,
             ],
             now()->addMinutes(10),
             function () use ($startDate, $endDate): array {
@@ -67,6 +68,9 @@ class StatsOverview extends StatsOverviewWidget
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
                         $query->where('pic_id', auth()->id());
+                    })
+                    ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
+                        $query->where('auditor_id', auth()->id());
                     })
                     ->selectRaw('status, count(*) as total')
                     ->groupBy('status')

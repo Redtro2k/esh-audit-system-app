@@ -53,6 +53,11 @@ class EditObservation extends EditRecord
             $data['date_captured'] = Carbon::now('Asia/Manila');
             $data['status'] = 'ongoing';
         }
+
+        if (auth()->user()->hasRole('contributor') && in_array(strtolower((string) $data['status']), ['for further discussion', 'resolved'], true)) {
+            $data['status'] = $this->getRecord()->status;
+        }
+
         if(auth()->user()->hasRole('auditor') && strtolower($data['status']) === 'resolved') {
             $data['date_resolved'] = Carbon::now('Asia/Manila');
         }
@@ -88,6 +93,6 @@ class EditObservation extends EditRecord
 
     protected function shouldShowObservationInfolist(): bool
     {
-        return ! auth()->user()->hasRole('auditor');
+        return ! auth()->user()->hasAnyRole(['auditor', 'contributor']);
     }
 }
