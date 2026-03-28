@@ -9,9 +9,9 @@ use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Tabs;
@@ -42,6 +42,7 @@ class ObservationForm
                                     Select::make('department')
                                         ->label('Department')
                                         ->placeholder('Select a department')
+                                        ->helperText('Choose the department that owns this observation.')
                                         ->native(false)
                                         ->options(Department::pluck('name', 'id'))
                                         ->reactive()
@@ -71,6 +72,7 @@ class ObservationForm
                                     Select::make('pic_id')
                                         ->label('PIC')
                                         ->placeholder('Select PIC')
+                                        ->helperText('Pick the person in charge who will respond to this observation.')
                                         ->relationship(
                                             'pic',
                                             'name',
@@ -91,6 +93,7 @@ class ObservationForm
                                     TextInput::make('area')
                                         ->nullable(false)
                                         ->label('Audit Area')
+                                        ->helperText('Enter the process, location, or activity covered by the audit.')
                                         ->placeholder('e.g. Warehouse Receiving'),
                                 ]),
                                 Grid::make()
@@ -104,25 +107,34 @@ class ObservationForm
                                                 ? implode(', ', ConcernCategory::query()->where('parent_id', $get('concern_type'))->pluck('name')->toArray())
                                                 : 'Select a category to view available concerns.')
                                             ->nullable(false),
-                                        TextInput::make('concern')
+                                        MarkdownEditor::make('concern')
+                                            ->columnSpanFull()
                                             ->label('Concern / Remarks')
+                                            ->helperText('Describe the issue clearly, including what was observed and why it matters.')
                                             ->placeholder('Describe the concern'),
                                     ]),
-                                Radio::make('status')
-                                    ->hiddenOn('create')
-                                    ->inlineLabel(false)
-                                    ->inline()
-                                    ->nullable(false)
-                                    ->options([
-                                        'pending' => 'Pending',
-                                        'ongoing' => 'Ongoing',
-                                        'for further discussion' => 'For Further Discussion',
-                                        'resolved' => 'Resolved',
+                                Grid::make()
+                                    ->schema([
+                                        Radio::make('status')
+                                            ->helperText('Set the current progress of this observation.')
+                                            ->hiddenOn('create')
+                                            ->inlineLabel(false)
+                                            ->inline()
+                                            ->nullable(false)
+                                            ->options([
+                                                'pending' => 'Pending',
+                                                'ongoing' => 'Ongoing',
+                                                'for further discussion' => 'For Further Discussion',
+                                                'resolved' => 'Resolved',
+                                            ]),
+                                    DateTimePicker::make('target_date')
+                                            ->label('Target Date')
+                                            ->placeholder('Select target date and time')
+                                            ->helperText('Choose the expected completion date for this observation.')
+                                            ->nullable(false),
                                     ]),
-                                DateTimePicker::make('target_date')
-                                    ->placeholder('Select target date and time')
-                                    ->nullable(false),
                                 FileUpload::make('capture_concern')
+                                    ->label('Proof Concern')
                                     ->multiple()
                                     ->nullable(false)
                                     ->image()
@@ -132,7 +144,7 @@ class ObservationForm
                                     ->maxSize(1024)
                                     ->imageEditor()
                                     ->imageEditorMode(2)
-                                    ->helperText('Upload one or more concern proof images.'),
+                                    ->helperText('Upload one or more images that support the audit concern.'),
 
                             ]),
                         Tab::make('Counter Measure')
@@ -141,6 +153,7 @@ class ObservationForm
                             ->schema([
                                 FileUpload::make('capture_solved')
                                     ->label('Upload Solved')
+                                    ->placeholder('Upload solved proof images')
                                     ->multiple()
                                     ->nullable(false)
                                     ->image()
@@ -148,12 +161,13 @@ class ObservationForm
                                     ->directory('solved')
                                     ->visibility('public')
                                     ->imageEditor()
-                                    ->helperText('Upload one or more solved proof images.')
+                                    ->helperText('Upload one or more images showing the corrective action or completed fix.')
                                     ->required(auth()->user()->hasRole('remediator')),
                                Grid::make(2)
                                     ->schema([
-                                        Textarea::make('counter_measure')
+                                        MarkdownEditor::make('counter_measure')
                                             ->label('Counter Measure')
+                                            ->helperText('Explain the action taken or planned to address the concern.')
                                             ->placeholder('Describe corrective action taken')
                                             ->hintAction(
                                                 Action::make('generateCounterMeasure')
@@ -214,8 +228,9 @@ class ObservationForm
                                             )
                                             ->hint('Use AI to improve your wording while keeping the same meaning.')
                                             ->required(auth()->user()->hasRole('remediator')),
-                                        Textarea::make('remarks')
+                                        MarkdownEditor::make('remarks')
                                             ->label('Remarks')
+                                            ->helperText('Add supporting notes, clarifications, or important follow-up details.')
                                             ->placeholder('Add supporting notes')
                                             ->hintAction(
                                                 Action::make('improveRemarks')
@@ -279,7 +294,6 @@ class ObservationForm
                                                     })
                                             )
                                             ->hint('Use AI to improve your wording while keeping the same meaning.')
-                                            ->required(auth()->user()->hasRole('remediator'))
                                     ])
 
                             ])

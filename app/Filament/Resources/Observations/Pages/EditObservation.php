@@ -3,10 +3,13 @@
 namespace App\Filament\Resources\Observations\Pages;
 
 use App\Filament\Resources\Observations\ObservationResource;
+use App\Filament\Resources\Observations\Schemas\ObservationInfolist;
 use Carbon\Carbon;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Components\EmbeddedSchema;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ForResolved;
 
@@ -14,6 +17,35 @@ use App\Mail\ForResolved;
 class EditObservation extends EditRecord
 {
     protected static string $resource = ObservationResource::class;
+
+    public function defaultInfolist(Schema $schema): Schema
+    {
+        if (! $schema->hasCustomColumns()) {
+            $schema->columns($this->hasInlineLabels() ? 1 : 2);
+        }
+
+        return $schema
+            ->inlineLabel($this->hasInlineLabels())
+            ->record($this->getRecord());
+    }
+
+    public function infolist(Schema $schema): Schema
+    {
+        return ObservationInfolist::configureForEdit($schema);
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        if ($this->shouldShowObservationInfolist()) {
+            return $schema->components([
+                EmbeddedSchema::make('infolist'),
+                $this->getFormContentComponent(),
+                $this->getRelationManagersContentComponent(),
+            ]);
+        }
+
+        return parent::content($schema);
+    }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
@@ -52,5 +84,10 @@ class EditObservation extends EditRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);
+    }
+
+    protected function shouldShowObservationInfolist(): bool
+    {
+        return ! auth()->user()->hasRole('auditor');
     }
 }
