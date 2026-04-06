@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use App\Models\Dealer;
 use App\Models\Observation;
+use App\Observers\DealerObserver;
 use App\Observers\ObservationObserver;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Comment::observe(CommentObserver::class);
+        Dealer::observe(DealerObserver::class);
         Observation::observe(ObservationObserver::class);
 
         $this->configureDefaults();

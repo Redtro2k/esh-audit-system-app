@@ -73,7 +73,7 @@ class UserResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['department', 'team', 'roles'])
+            ->with(['department', 'dealers', 'team', 'roles'])
             ->when(static::canAssignTeams() && ! static::canManageUsers(), function (Builder $query): void {
                 $query->role('contributor');
             });

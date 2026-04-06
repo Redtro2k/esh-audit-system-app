@@ -82,6 +82,26 @@ class UserForm
                                             ->placeholder('Select a department')
                                             ->helperText('Assign the user to a department if applicable.')
                                             ->nullable(),
+                                        Select::make('dealers')
+                                            ->label('Dealers')
+                                            ->relationship(
+                                                'dealers',
+                                                'name',
+                                                modifyQueryUsing: fn ($query) => $query->visibleTo(auth()->user())->orderBy('name')
+                                            )
+                                            ->disabled(fn (): bool => UserResource::canAssignTeams() && ! UserResource::canManageUsers())
+                                            ->multiple()
+                                            ->maxItems(fn (Get $get, ?User $record): ?int => self::shouldLimitDealersToOne($get('roles'), $record) ? 1 : null)
+                                            ->searchable()
+                                            ->preload()
+                                            ->native(false)
+                                            ->placeholder(fn (Get $get, ?User $record): string => self::shouldLimitDealersToOne($get('roles'), $record)
+                                                ? 'Select one dealer'
+                                                : 'Select one or more dealers')
+                                            ->helperText(fn (Get $get, ?User $record): string => self::shouldLimitDealersToOne($get('roles'), $record)
+                                                ? 'Contributors can only be assigned to one dealer.'
+                                                : 'Assign one or more dealers based on access coverage.')
+                                            ->nullable(),
                                         Select::make('roles')
                                             ->relationship('roles', 'name')
                                             ->disabled(fn (): bool => UserResource::canAssignTeams() && ! UserResource::canManageUsers())
@@ -93,9 +113,19 @@ class UserForm
                                             ->placeholder('Select one or more roles')
                                             ->helperText('Choose the access role(s) this user should have.')
                                             ->live()
-                                            ->afterStateUpdated(function (Set $set, ?array $state): void {
+                                            ->afterStateUpdated(function (Set $set, Get $get, ?array $state): void {
                                                 if (! self::rolesContainContributor($state)) {
                                                     $set('team_id', null);
+                                                    return;
+                                                }
+
+                                                $selectedDealers = collect($get('dealers'))
+                                                    ->filter(fn ($dealer) => filled($dealer))
+                                                    ->values()
+                                                    ->all();
+
+                                                if (count($selectedDealers) > 1) {
+                                                    $set('dealers', [reset($selectedDealers)]);
                                                 }
                                             })
                                             ->required(),
@@ -158,5 +188,10 @@ class UserForm
         return self::rolesContainContributor($roles)
             || $record?->hasRole('contributor')
             || filled($record?->team_id);
+    }
+
+    protected static function shouldLimitDealersToOne(array | null $roles, ?User $record): bool
+    {
+        return self::rolesContainContributor($roles) || $record?->hasRole('contributor');
     }
 }

@@ -19,6 +19,7 @@ class ObservationExporter extends Exporter
             ExportColumn::make('status')->label('Status'),
             ExportColumn::make('pic.name')->label('Observer Name'),
             ExportColumn::make('pic.department.name')->label('Observer Department'),
+            ExportColumn::make('dealer.name')->label('Dealer'),
             ExportColumn::make('area')->label('Audit Area'),
             ExportColumn::make('concernType.name')->label('Concern Type'),
             ExportColumn::make('concern')->label('Concern'),

@@ -5,6 +5,7 @@ namespace App\Models;
 use Filament\Models\Contracts\HasAvatar;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -68,6 +69,11 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'team_id');
+    }
+
+    public function dealers(): BelongsToMany
+    {
+        return $this->belongsToMany(Dealer::class)->withTimestamps();
     }
 
     protected function resolveAvatarUrl(): ?string

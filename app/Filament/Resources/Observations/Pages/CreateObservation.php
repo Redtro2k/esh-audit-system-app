@@ -16,6 +16,10 @@ class CreateObservation extends CreateRecord
         $data['auditor_id'] = auth()->id();
         $data['status'] = 'pending';
 
+        if (auth()->user()->hasRole('contributor') && blank($data['dealer_id'] ?? null)) {
+            $data['dealer_id'] = auth()->user()?->dealers()->orderBy('dealers.name')->value('dealers.id');
+        }
+
         if(auth()->user()->hasRole('remediator')) {
             $data['date_captured'] = now();
                 $data['status'] = 'ongoing';

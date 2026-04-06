@@ -65,6 +65,7 @@ class ObservationInfolist
                             ->color('primary'),
                     ]),
                 TextEntry::make('auditor.name')->label('Auditor Name'),
+                TextEntry::make('dealer.name')->label('Dealer'),
                 TextEntry::make('target_date')->label('Target Date')->dateTime('l, F d, Y h:i A'),
                 TextEntry::make('status')
                     ->size(TextSize::Large)

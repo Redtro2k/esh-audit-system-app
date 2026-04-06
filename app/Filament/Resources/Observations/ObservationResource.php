@@ -14,7 +14,6 @@ use BackedEnum;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Enum\NavigationGroup;
@@ -38,19 +37,22 @@ class ObservationResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        if(auth()->user()->hasRole('remediator')) {
-            return static::getModel()::where('status', 'ongoing')->where('pic_id', auth()->id())->count() > 0 ? (string)static::getModel()::where('status', 'pending')->where('pic_id', auth()->id())->count() . ' Pending': null;
+        $query = static::getScopedObservationQuery();
+
+        if (auth()->user()->hasRole('remediator')) {
+            $query->where('pic_id', auth()->id());
+        } elseif (auth()->user()->hasRole('contributor')) {
+            $query->where('auditor_id', auth()->user()->getKey());
         }
-        if (auth()->user()->hasRole('contributor')) {
-            return static::getModel()::where('status', 'ongoing')->where('auditor_id', auth()->id())->count() > 0
-                ? (string) static::getModel()::where('status', 'pending')->where('auditor_id', auth()->id())->count() . ' Pending'
-                : null;
-        }
-        return static::getModel()::where('status', 'ongoing')->count() > 0 ? (string)static::getModel()::where('status', 'pending')->count() . ' Pending': null;
+
+        return $query->where('status', 'pending')->count() > 0
+            ? (string) $query->where('status', 'pending')->count() . ' Pending'
+            : null;
     }
+
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        return static::getScopedObservationQuery()
             ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
                 $user = auth()->user();
                 $subscriptionsTable = (new CommentSubscription())->getTable();
@@ -70,8 +72,26 @@ class ObservationResource extends Resource
                 });
             })
             ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
-                $query->where('auditor_id', auth()->id());
+                $query->where('auditor_id', auth()->user()->getKey());
             });
+    }
+
+    protected static function getScopedObservationQuery(): Builder
+    {
+        $query = parent::getEloquentQuery()->with(['dealer', 'pic.department', 'pic', 'auditor']);
+        $user = auth()->user();
+
+        if (! $user || $user->hasAnyRole(['developer', 'auditor', 'remediator', 'gm'])) {
+            return $query;
+        }
+
+        $dealerIds = $user->dealers()->pluck('dealers.id');
+
+        if ($dealerIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('dealer_id', $dealerIds);
     }
 
     public static function form(Schema $schema): Schema

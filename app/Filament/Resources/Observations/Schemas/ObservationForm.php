@@ -39,6 +39,53 @@ class ObservationForm
                             ->hidden(fn($q) => auth()->user()->hasRole('remediator'))
                             ->schema([
                                 Grid::make(3)->schema([
+                                    Select::make('dealer_id')
+                                        ->label('Dealer')
+                                        ->placeholder('Select a dealer')
+                                        ->helperText(fn (): string => self::currentUserMustUseAssignedDealer()
+                                            ? 'This dealer is automatically assigned from your user account.'
+                                            : 'Choose the dealer for this observation.')
+                                        ->relationship(
+                                            'dealer',
+                                            'name',
+                                            modifyQueryUsing: fn ($query) => $query
+                                                ->visibleTo(auth()->user())
+                                                ->orderBy('name')
+                                        )
+                                        ->native(false)
+                                        ->searchable()
+                                        ->preload()
+                                        ->required()
+                                        ->hidden(fn (): bool => self::currentUserMustUseAssignedDealer())
+                                        ->disabled(fn (): bool => self::currentUserMustUseAssignedDealer())
+                                        ->dehydrated()
+                                        ->live()
+                                        ->default(fn (): ?int => self::currentUserDealerId())
+                                        ->afterStateHydrated(function (Set $set, $state): void {
+                                            if (self::currentUserMustUseAssignedDealer() && blank($state)) {
+                                                $set('dealer_id', self::currentUserDealerId());
+                                            }
+                                        })
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                            $currentPicId = $get('pic_id');
+
+                                            if (blank($state)) {
+                                                $set('pic_id', null);
+
+                                                return;
+                                            }
+
+                                            if ($currentPicId) {
+                                                $picStillMatchesDealer = User::query()
+                                                    ->whereKey($currentPicId)
+                                                    ->whereHas('dealers', fn ($query) => $query->whereKey($state))
+                                                    ->exists();
+
+                                                if (! $picStillMatchesDealer) {
+                                                    $set('pic_id', null);
+                                                }
+                                            }
+                                        }),
                                     Select::make('department')
                                         ->label('Department')
                                         ->placeholder('Select a department')
@@ -52,7 +99,7 @@ class ObservationForm
                                                 $set('department', $record->pic->department_id);
                                             }
                                         })
-                                        ->afterStateUpdated(function ($state, Set $set) {
+                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                             $set('pic_id', null);
 
                                             if (blank($state)) {
@@ -61,6 +108,7 @@ class ObservationForm
 
                                             $firstPicId = User::query()
                                                 ->where('department_id', $state)
+                                                ->whereHas('dealers', fn ($query) => $query->whereKey($get('dealer_id')))
                                                 ->role('remediator')
                                                 ->orderBy('name')
                                                 ->value('id');
@@ -79,6 +127,10 @@ class ObservationForm
                                             modifyQueryUsing: fn ($query, Get $get) =>
                                             $query
                                                 ->when(
+                                                    $get('dealer_id'),
+                                                    fn ($q) => $q->whereHas('dealers', fn ($dealerQuery) => $dealerQuery->whereKey($get('dealer_id')))
+                                                )
+                                                ->when(
                                                     $get('department'),
                                                     fn ($q) => $q->where('department_id', $get('department'))
                                                 )
@@ -89,7 +141,7 @@ class ObservationForm
                                         ->native(false)
                                         ->searchable(['name'])
                                         ->required()
-                                        ->disabled(fn (Get $get) => blank($get('department'))),
+                                        ->disabled(fn (Get $get) => blank($get('department')) || blank($get('dealer_id'))),
                                     TextInput::make('area')
                                         ->nullable(false)
                                         ->label('Audit Area')
@@ -365,5 +417,15 @@ PROMPT;
         }
 
         return ConcernCategory::query()->whereKey($concernTypeId)->value('name');
+    }
+
+    private static function currentUserMustUseAssignedDealer(): bool
+    {
+        return auth()->user()?->hasRole('contributor') ?? false;
+    }
+
+    private static function currentUserDealerId(): ?int
+    {
+        return auth()->user()?->dealers()->orderBy('dealers.name')->value('dealers.id');
     }
 }

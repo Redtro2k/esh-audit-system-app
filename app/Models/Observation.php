@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\CategoryConcern;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Kirschbaum\Commentions\Contracts\Commentable;
 use Kirschbaum\Commentions\HasComments;
@@ -29,6 +29,12 @@ class Observation extends Model implements Commentable
     {
         return $this->belongsTo(User::class, 'pic_id');
     }
+
+    public function dealer(): BelongsTo
+    {
+        return $this->belongsTo(Dealer::class, 'dealer_id');
+    }
+
     public function department(): HasOneThrough
     {
         return $this->hasOneThrough(

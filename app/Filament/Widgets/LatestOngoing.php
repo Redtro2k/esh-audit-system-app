@@ -35,25 +35,22 @@ class LatestOngoing extends TableWidget
 
         return $table
             ->query(fn (): Builder => \App\Models\Observation::query()
-            ->whereIn('status', ['pending', 'ongoing', 'for further discussion'])
-            ->where(function (Builder $query) use ($startDate, $endDate) {
-                $query
-                    // Always include pending, regardless of date
-                    ->where('status', 'pending')
-
-                    // Other statuses must follow the date filter
-                    ->orWhere(function (Builder $q) use ($startDate, $endDate) {
-                        $q->whereIn('status', ['ongoing', 'for further discussion'])
-                        ->whereBetween('created_at', [$startDate, $endDate]);
-                    });
-            })
-            ->with(['pic.department', 'auditor'])
-            ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
-                $query->where('pic_id', auth()->id());
-            })
-            ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
-                $query->where('auditor_id', auth()->id());
-            }))
+                ->whereIn('status', ['pending', 'ongoing', 'for further discussion'])
+                ->where(function (Builder $query) use ($startDate, $endDate) {
+                    $query
+                        ->where('status', 'pending')
+                        ->orWhere(function (Builder $q) use ($startDate, $endDate) {
+                            $q->whereIn('status', ['ongoing', 'for further discussion'])
+                                ->whereBetween('created_at', [$startDate, $endDate]);
+                        });
+                })
+                ->with(['pic.department', 'auditor', 'dealer'])
+                ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
+                    $query->where('pic_id', auth()->user()->getKey());
+                })
+                ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
+                    $query->where('auditor_id', auth()->user()->getKey());
+                }))
                     ->emptyStateHeading('No ongoing audits')
                     ->emptyStateDescription('Try adjusting the date range or check back later.')
                     ->columns([

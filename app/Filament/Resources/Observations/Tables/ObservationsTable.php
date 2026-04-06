@@ -56,6 +56,10 @@ class ObservationsTable
                     ->label('Department')
                     ->sortable()
                     ->toggleable(),
+                TextColumn::make('dealer.name')
+                    ->label('Dealer')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('pic.name')
                     ->label('PIC')
                     ->searchable()
@@ -121,6 +125,11 @@ class ObservationsTable
                 SelectFilter::make('department')
                     ->label('Department')
                     ->relationship('department', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('dealer_id')
+                    ->label('Dealer')
+                    ->relationship('dealer', 'name')
                     ->searchable()
                     ->preload(),
                 Filter::make('created_at')

@@ -48,6 +48,12 @@ class UsersTable
                     ->placeholder('No department')
                     ->sortable()
                     ->toggleable(),
+                TextColumn::make('dealers.acronym')
+                    ->label('Dealers')
+                    ->badge()
+                    ->separator(',')
+                    ->placeholder('No dealers')
+                    ->toggleable(),
                 TextColumn::make('roles.name')
                     ->label('Roles')
                     ->badge()
@@ -62,6 +68,12 @@ class UsersTable
                 SelectFilter::make('department_id')
                     ->label('Department')
                     ->relationship('department', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('dealers')
+                    ->label('Dealers')
+                    ->relationship('dealers', 'name')
+                    ->multiple()
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('team_id')
