@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\Models\Observation;
+use App\Support\AnalyticsObservationScope;
 use App\Support\ObservationAnalyticsCache;
 use Carbon\Carbon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -35,19 +35,22 @@ class SummaryAnalytics extends Widget
     {
         $startDate = Carbon::parse($this->startDate);
         $endDate = Carbon::parse($this->endDate);
+        $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         $this->paragraph = ObservationAnalyticsCache::remember(
             'summary-analytics-text',
             [
                 'startDate' => $this->startDate,
                 'endDate' => $this->endDate,
+                'userId' => auth()->id(),
+                'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(15),
             function () use ($startDate, $endDate): string {
                 $previousStartDate = $startDate->copy()->subMonthNoOverflow();
                 $previousEndDate = $endDate->copy()->subMonthNoOverflow();
 
-                $observation = Observation::query()
+                $observation = AnalyticsObservationScope::query()
                     ->when($this->startDate, fn (Builder $query) => $query->whereDate('created_at', '>=', $this->startDate))
                     ->when($this->endDate, fn (Builder $query) => $query->whereDate('created_at', '<=', $this->endDate))
                     ->with('department')
@@ -56,7 +59,7 @@ class SummaryAnalytics extends Widget
                 $currentTotal = $observation->count();
                 $currentPending = $observation->where('status', 'pending')->count();
 
-                $previousMonth = Observation::query()
+                $previousMonth = AnalyticsObservationScope::query()
                     ->whereDate('created_at', '>=', $previousStartDate->toDateString())
                     ->whereDate('created_at', '<=', $previousEndDate->toDateString())
                     ->get();
@@ -124,12 +127,18 @@ class SummaryAnalytics extends Widget
 
     public function mostOfConcernFindings()
     {
+        $dealerIds = AnalyticsObservationScope::visibleDealerIds();
+
         $this->paragraph = ObservationAnalyticsCache::remember(
             'concern-findings-text',
-            [],
+            [
+                'userId' => auth()->id(),
+                'dealerIds' => $dealerIds->all(),
+            ],
             now()->addMinutes(15),
             function (): string {
-                $observations = Observation::selectRaw('concern_type, count(*) as concern_count')
+                $observations = AnalyticsObservationScope::query()
+                    ->selectRaw('concern_type, count(*) as concern_count')
                     ->whereHas('concernType', fn (Builder $query) => $query->whereNull('parent_id'))
                     ->groupBy('concern_type')
                     ->orderByDesc('concern_count')
@@ -157,12 +166,17 @@ class SummaryAnalytics extends Widget
 
     public function domainExposureAnalysis()
     {
+        $dealerIds = AnalyticsObservationScope::visibleDealerIds();
+
         $this->paragraph = ObservationAnalyticsCache::remember(
             'domain-exposure-text',
-            [],
+            [
+                'userId' => auth()->id(),
+                'dealerIds' => $dealerIds->all(),
+            ],
             now()->addMinutes(15),
             function (): string {
-                $observations = Observation::query()
+                $observations = AnalyticsObservationScope::query()
                     ->whereHas('concernType', fn (Builder $query) => $query->whereNull('parent_id'))
                     ->with('concernType')
                     ->get()

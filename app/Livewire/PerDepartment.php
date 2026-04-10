@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\Models\Observation;
+use App\Support\AnalyticsObservationScope;
 use App\Support\ObservationAnalyticsCache;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,15 +22,18 @@ class PerDepartment extends ApexChartWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
+        $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         $counts = ObservationAnalyticsCache::remember(
             'findings-per-department',
             [
                 'startDate' => $startDate,
                 'endDate' => $endDate,
+                'userId' => auth()->id(),
+                'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(10),
-            fn () => Observation::query()
+            fn () => AnalyticsObservationScope::query()
                 ->selectRaw('departments.name as department, count(*) as total')
                 ->when($startDate, fn (Builder $query) => $query->whereDate('observations.created_at', '>=', $startDate))
                 ->when($endDate, fn (Builder $query) => $query->whereDate('observations.created_at', '<=', $endDate))

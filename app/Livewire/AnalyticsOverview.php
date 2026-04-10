@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\Models\Observation;
+use App\Support\AnalyticsObservationScope;
 use App\Support\ObservationAnalyticsCache;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
@@ -67,6 +67,7 @@ class AnalyticsOverview extends StatsOverviewWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
+        $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         return ObservationAnalyticsCache::remember(
             'finding-overview-counts',
@@ -74,6 +75,8 @@ class AnalyticsOverview extends StatsOverviewWidget
                 'startDate' => $startDate,
                 'endDate' => $endDate,
                 'today' => now()->toDateString(),
+                'userId' => auth()->id(),
+                'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(10),
             function (): array {
@@ -101,7 +104,7 @@ class AnalyticsOverview extends StatsOverviewWidget
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
 
-        return Observation::query()
+        return AnalyticsObservationScope::query()
             ->when($startDate, fn (Builder $query) => $query->whereDate('created_at', '>=', $startDate))
             ->when($endDate, fn (Builder $query) => $query->whereDate('created_at', '<=', $endDate));
     }
