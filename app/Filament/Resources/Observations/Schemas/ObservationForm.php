@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\User;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Actions\Action;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
@@ -67,24 +68,21 @@ class ObservationForm
                                             }
                                         })
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $currentPicId = $get('pic_id');
+                                            $effectiveDealerId = filled($state)
+                                                ? $state
+                                                : self::resolveDealerId($get);
 
-                                            if (blank($state)) {
+                                            if (blank($effectiveDealerId)) {
                                                 $set('pic_id', null);
 
                                                 return;
                                             }
 
-                                            if ($currentPicId) {
-                                                $picStillMatchesDealer = User::query()
-                                                    ->whereKey($currentPicId)
-                                                    ->whereHas('dealers', fn ($query) => $query->whereKey($state))
-                                                    ->exists();
-
-                                                if (! $picStillMatchesDealer) {
-                                                    $set('pic_id', null);
-                                                }
-                                            }
+                                            self::syncPicSelection(
+                                                set: $set,
+                                                get: $get,
+                                                dealerId: $effectiveDealerId,
+                                            );
                                         }),
                                     Select::make('department')
                                         ->label('Department')
@@ -92,7 +90,7 @@ class ObservationForm
                                         ->helperText('Choose the department that owns this observation.')
                                         ->native(false)
                                         ->options(Department::pluck('name', 'id'))
-                                        ->reactive()
+                                        ->live()
                                         ->dehydrated(false)
                                         ->afterStateHydrated(function (Set $set, Get $get, $record) {
                                             if ($record?->pic?->department_id) {
@@ -100,48 +98,23 @@ class ObservationForm
                                             }
                                         })
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $set('pic_id', null);
-
-                                            if (blank($state)) {
-                                                return;
-                                            }
-
-                                            $firstPicId = User::query()
-                                                ->where('department_id', $state)
-                                                ->whereHas('dealers', fn ($query) => $query->whereKey($get('dealer_id')))
-                                                ->role('remediator')
-                                                ->orderBy('name')
-                                                ->value('id');
-
-                                            if ($firstPicId) {
-                                                $set('pic_id', $firstPicId);
-                                            }
+                                            self::syncPicSelection(
+                                                set: $set,
+                                                get: $get,
+                                                departmentId: $state,
+                                            );
                                         }),
                                     Select::make('pic_id')
                                         ->label('PIC')
                                         ->placeholder('Select PIC')
                                         ->helperText('Pick the person in charge who will respond to this observation.')
-                                        ->relationship(
-                                            'pic',
-                                            'name',
-                                            modifyQueryUsing: fn ($query, Get $get) =>
-                                            $query
-                                                ->when(
-                                                    $get('dealer_id'),
-                                                    fn ($q) => $q->whereHas('dealers', fn ($dealerQuery) => $dealerQuery->whereKey($get('dealer_id')))
-                                                )
-                                                ->when(
-                                                    $get('department'),
-                                                    fn ($q) => $q->where('department_id', $get('department'))
-                                                )
-                                                ->role('remediator')
-                                                ->orderBy('name')
-                                        )
+                                        ->options(fn (Get $get): array => self::getPicOptions($get))
                                         ->preload()
                                         ->native(false)
                                         ->searchable(['name'])
+                                        ->live()
                                         ->required()
-                                        ->disabled(fn (Get $get) => blank($get('department')) || blank($get('dealer_id'))),
+                                        ->disabled(fn (Get $get) => blank($get('department'))),
                                     TextInput::make('area')
                                         ->nullable(false)
                                         ->label('Audit Area')
@@ -421,11 +394,78 @@ PROMPT;
 
     private static function currentUserMustUseAssignedDealer(): bool
     {
-        return auth()->user()?->hasRole('contributor') ?? false;
+        return auth()->user()?->hasAnyRole(['auditor', 'contributor']) ?? false;
     }
 
     private static function currentUserDealerId(): ?int
     {
         return auth()->user()?->dealers()->orderBy('dealers.name')->value('dealers.id');
+    }
+
+    private static function syncPicSelection(Set $set, Get $get, mixed $dealerId = null, mixed $departmentId = null): void
+    {
+        $dealerId ??= self::resolveDealerId($get);
+        $departmentId ??= $get('department');
+        $currentPicId = $get('pic_id');
+
+        if (blank($departmentId)) {
+            $set('pic_id', null);
+
+            return;
+        }
+
+        if (filled($currentPicId)) {
+            $picStillMatchesSelection = self::buildPicQuery($departmentId, $dealerId)
+                ->whereKey($currentPicId)
+                ->exists();
+
+            if ($picStillMatchesSelection) {
+                return;
+            }
+        }
+
+        $firstPicId = self::buildPicQuery($departmentId, $dealerId)
+            ->value('id');
+
+        $set('pic_id', $firstPicId);
+    }
+
+    private static function getPicOptions(Get $get): array
+    {
+        $departmentId = $get('department');
+
+        if (blank($departmentId)) {
+            return [];
+        }
+
+        return self::buildPicQuery($departmentId, self::resolveDealerId($get))
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    private static function buildPicQuery(mixed $departmentId, mixed $dealerId = null): Builder
+    {
+        $baseQuery = User::query()
+            ->where('department_id', $departmentId)
+            ->role('remediator')
+            ->orderBy('name');
+
+        if (blank($dealerId)) {
+            return $baseQuery;
+        }
+
+        $dealerScopedQuery = (clone $baseQuery)
+            ->whereHas('dealers', fn ($query) => $query->whereKey($dealerId));
+
+        if ($dealerScopedQuery->exists()) {
+            return $dealerScopedQuery;
+        }
+
+        return $baseQuery;
+    }
+
+    private static function resolveDealerId(Get $get): mixed
+    {
+        return $get('dealer_id') ?: self::currentUserDealerId();
     }
 }

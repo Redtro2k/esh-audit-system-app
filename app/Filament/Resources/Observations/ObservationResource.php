@@ -76,12 +76,12 @@ class ObservationResource extends Resource
             });
     }
 
-    protected static function getScopedObservationQuery(): Builder
+    public static function getScopedObservationQuery(): Builder
     {
         $query = parent::getEloquentQuery()->with(['dealer', 'pic.department', 'pic', 'auditor']);
         $user = auth()->user();
 
-        if (! $user || $user->hasAnyRole(['developer', 'auditor', 'remediator', 'gm'])) {
+        if (! $user || $user->hasAnyRole(['developer', 'remediator', 'gm'])) {
             return $query;
         }
 

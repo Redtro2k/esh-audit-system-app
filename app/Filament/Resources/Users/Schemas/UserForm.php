@@ -101,6 +101,34 @@ class UserForm
                                             ->helperText(fn (Get $get, ?User $record): string => self::shouldLimitDealersToOne($get('roles'), $record)
                                                 ? 'Contributors can only be assigned to one dealer.'
                                                 : 'Assign one or more dealers based on access coverage.')
+                                            ->live()
+                                            ->afterStateUpdated(function (Set $set, Get $get, $state): void {
+                                                $selectedDealerIds = collect(is_array($state) ? $state : [$state])
+                                                    ->filter(fn ($dealerId) => filled($dealerId))
+                                                    ->map(fn ($dealerId) => (int) $dealerId)
+                                                    ->values();
+
+                                                if ($selectedDealerIds->isEmpty()) {
+                                                    $set('team_id', null);
+
+                                                    return;
+                                                }
+
+                                                $selectedTeamId = $get('team_id');
+
+                                                if (blank($selectedTeamId)) {
+                                                    return;
+                                                }
+
+                                                $teamMatchesDealer = Team::query()
+                                                    ->whereKey($selectedTeamId)
+                                                    ->whereIn('dealer_id', $selectedDealerIds->all())
+                                                    ->exists();
+
+                                                if (! $teamMatchesDealer) {
+                                                    $set('team_id', null);
+                                                }
+                                            })
                                             ->nullable(),
                                         Select::make('roles')
                                             ->relationship('roles', 'name')
@@ -131,12 +159,28 @@ class UserForm
                                             ->required(),
                                         Select::make('team_id')
                                             ->label('Team')
-                                            ->options(Team::query()->orderBy('name')->pluck('name', 'id'))
+                                            ->options(function (Get $get, ?User $record): array {
+                                                $dealerIds = collect($get('dealers') ?? $record?->dealers->modelKeys() ?? [])
+                                                    ->filter(fn ($dealerId) => filled($dealerId))
+                                                    ->map(fn ($dealerId) => (int) $dealerId)
+                                                    ->values()
+                                                    ->all();
+
+                                                return Team::query()
+                                                    ->when(
+                                                        count($dealerIds) > 0,
+                                                        fn ($query) => $query->whereIn('dealer_id', $dealerIds)
+                                                    )
+                                                    ->orderBy('name')
+                                                    ->pluck('name', 'id')
+                                                    ->all();
+                                            })
                                             ->searchable()
                                             ->preload()
                                             ->native(false)
                                             ->placeholder('Select a team')
-                                            ->helperText('Assign the contributor to an existing team.')
+                                            ->helperText('Assign the contributor to an existing team for the selected dealer.')
+                                            ->live()
                                             ->hidden(fn (Get $get, ?User $record): bool => ! self::shouldUseTeamSelection($get('roles'), $record))
                                             ->required(fn (Get $get, ?User $record): bool => self::shouldUseTeamSelection($get('roles'), $record)),
                                         TextInput::make('password')

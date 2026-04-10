@@ -129,7 +129,11 @@ class ObservationsTable
                     ->preload(),
                 SelectFilter::make('dealer_id')
                     ->label('Dealer')
-                    ->relationship('dealer', 'name')
+                    ->relationship(
+                        'dealer',
+                        'name',
+                        modifyQueryUsing: fn ($query) => $query->visibleTo(auth()->user())->orderBy('name')
+                    )
                     ->searchable()
                     ->preload(),
                 Filter::make('created_at')

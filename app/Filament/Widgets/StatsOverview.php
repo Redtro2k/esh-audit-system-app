@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Observation;
+use App\Filament\Resources\Observations\ObservationResource;
 use App\Support\ObservationAnalyticsCache;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Widgets\StatsOverviewWidget;
@@ -10,6 +10,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 
 class StatsOverview extends StatsOverviewWidget
@@ -52,6 +53,7 @@ class StatsOverview extends StatsOverviewWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? now()->startOfMonth();
         $endDate  = $this->pageFilters['endDate'] ?? now()->endOfMonth();
+        $dealerIds = $this->getVisibleDealerIds();
 
         return ObservationAnalyticsCache::remember(
             'dashboard-status-counts',
@@ -59,12 +61,13 @@ class StatsOverview extends StatsOverviewWidget
                 'startDate' => $startDate,
                 'endDate' => $endDate,
                 'userId' => auth()->id(),
+                'dealerIds' => $dealerIds->all(),
                 'isRemediator' => auth()->user()?->hasRole('remediator') ?? false,
                 'isContributor' => auth()->user()?->hasRole('contributor') ?? false,
             ],
             now()->addMinutes(10),
-            function () use ($startDate, $endDate): array {
-                $counts = Observation::query()
+            function () use ($startDate, $endDate, $dealerIds): array {
+                $counts = $this->getWidgetScopedObservationQuery($dealerIds)
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
                         $query->where('pic_id', auth()->id());
@@ -84,6 +87,32 @@ class StatsOverview extends StatsOverviewWidget
                 ];
             }
         );
+    }
+
+    protected function getWidgetScopedObservationQuery(?Collection $dealerIds = null): Builder
+    {
+        $query = ObservationResource::getScopedObservationQuery();
+        $user = auth()->user();
+        $dealerIds ??= $this->getVisibleDealerIds();
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasRole('developer')) {
+            return $query;
+        }
+
+        if ($dealerIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('dealer_id', $dealerIds->all());
+    }
+
+    protected function getVisibleDealerIds(): Collection
+    {
+        return auth()->user()?->dealers()->pluck('dealers.id') ?? collect();
     }
 
     protected function getTabUrl(string $tab): string

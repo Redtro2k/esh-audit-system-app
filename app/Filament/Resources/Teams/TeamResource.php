@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Teams;
 
 use App\Enum\NavigationGroup;
 use App\Filament\Resources\Teams\Pages\ManageTeams;
+use App\Models\Dealer;
 use App\Models\Team;
 use App\Models\User;
 use BackedEnum;
@@ -11,6 +12,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -67,7 +69,7 @@ class TeamResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with('users');
+        return parent::getEloquentQuery()->with(['dealer', 'users']);
     }
 
     public static function form(Schema $schema): Schema
@@ -77,18 +79,38 @@ class TeamResource extends Resource
                 TextInput::make('name')
                     ->label('Team Name')
                     ->required()
-                    ->unique(ignoreRecord: true)
                     ->maxLength(255)
                     ->placeholder('Enter team name')
                     ->helperText('Create a team that contributor users can join.'),
+                Select::make('dealer_id')
+                    ->label('Assigned Dealer')
+                    ->relationship(
+                        'dealer',
+                        'name',
+                        modifyQueryUsing: fn ($query) => $query
+                            ->visibleTo(auth()->user())
+                            ->orderBy('name')
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->required()
+                    ->placeholder('Select a dealer')
+                    ->helperText('Assign this team to the dealer it belongs to.'),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultGroup('dealer.name')
             ->columns([
                 TextColumn::make('name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('dealer.name')
+                    ->label('Dealer')
+                    ->placeholder('No dealer')
                     ->searchable()
                     ->sortable(),
                 ImageColumn::make('members')

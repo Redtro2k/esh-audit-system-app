@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\Observations\ObservationResource;
 use App\Filament\Resources\Observations\Pages\ViewObservation;
 use Filament\Actions\BulkActionGroup;
 use Filament\Tables\Columns\ImageColumn;
@@ -10,6 +11,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
@@ -34,7 +36,7 @@ class LatestOngoing extends TableWidget
         $endDate  = $this->pageFilters['endDate'] ?? now()->endOfMonth();
 
         return $table
-            ->query(fn (): Builder => \App\Models\Observation::query()
+            ->query(fn (): Builder => $this->getWidgetScopedObservationQuery()
                 ->whereIn('status', ['pending', 'ongoing', 'for further discussion'])
                 ->where(function (Builder $query) use ($startDate, $endDate) {
                     $query
@@ -44,7 +46,6 @@ class LatestOngoing extends TableWidget
                                 ->whereBetween('created_at', [$startDate, $endDate]);
                         });
                 })
-                ->with(['pic.department', 'auditor', 'dealer'])
                 ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
                     $query->where('pic_id', auth()->user()->getKey());
                 })
@@ -132,4 +133,30 @@ class LatestOngoing extends TableWidget
                         ]),
                     ]);
             }
+
+    protected function getWidgetScopedObservationQuery(): Builder
+    {
+        $query = ObservationResource::getScopedObservationQuery();
+        $user = auth()->user();
+        $dealerIds = $this->getVisibleDealerIds();
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasRole('developer')) {
+            return $query;
+        }
+
+        if ($dealerIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('dealer_id', $dealerIds->all());
+    }
+
+    protected function getVisibleDealerIds(): Collection
+    {
+        return auth()->user()?->dealers()->pluck('dealers.id') ?? collect();
+    }
 }
