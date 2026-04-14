@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\Observations\Pages;
 
 use App\Filament\Resources\Observations\ObservationResource;
-use Filament\Resources\Pages\CreateRecord;
 use App\Models\Observation;
+use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Mail;
 
 class CreateObservation extends CreateRecord
@@ -20,10 +20,15 @@ class CreateObservation extends CreateRecord
             $data['dealer_id'] = auth()->user()?->dealers()->orderBy('dealers.name')->value('dealers.id');
         }
 
-        if(auth()->user()->hasRole('remediator')) {
-            $data['date_captured'] = now();
-                $data['status'] = 'ongoing';
+        if (! auth()->user()->hasAnyRole(['remediator', 'representative'])) {
+            $data['target_date'] = null;
         }
+
+        if (auth()->user()->hasAnyRole(['remediator', 'representative'])) {
+            $data['date_captured'] = now();
+            $data['status'] = 'ongoing';
+        }
+
         return $data;
     }
 

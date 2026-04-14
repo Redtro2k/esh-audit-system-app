@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Observations;
 
+use App\Enum\NavigationGroup;
 use App\Filament\Resources\Observations\Pages\CreateObservation;
 use App\Filament\Resources\Observations\Pages\EditObservation;
 use App\Filament\Resources\Observations\Pages\ListObservations;
@@ -10,19 +11,18 @@ use App\Filament\Resources\Observations\Schemas\ObservationForm;
 use App\Filament\Resources\Observations\Schemas\ObservationInfolist;
 use App\Filament\Resources\Observations\Tables\ObservationsTable;
 use App\Models\Observation;
+use App\Models\User;
 use BackedEnum;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Enum\NavigationGroup;
 use Kirschbaum\Commentions\CommentSubscription;
 use UnitEnum;
 
 class ObservationResource extends Resource
 {
-
     protected static ?string $model = Observation::class;
 
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::AuditManagement;
@@ -35,45 +35,36 @@ class ObservationResource extends Resource
 
     protected static ?string $pluralLabel = 'Observations';
 
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('developer') ?? false;
+    }
+
     public static function getNavigationBadge(): ?string
     {
         $query = static::getScopedObservationQuery();
+        $user = auth()->user();
 
-        if (auth()->user()->hasRole('remediator')) {
-            $query->where('pic_id', auth()->id());
-        } elseif (auth()->user()->hasRole('contributor')) {
-            $query->where('auditor_id', auth()->user()->getKey());
+        if (! $user) {
+            return null;
         }
 
-        return $query->where('status', 'pending')->count() > 0
-            ? (string) $query->where('status', 'pending')->count() . ' Pending'
+        static::applyObservationVisibility($query, $user);
+
+        $pendingCount = $query->where('status', 'pending')->count();
+
+        return $pendingCount > 0
+            ? (string) $pendingCount.' Pending'
             : null;
     }
 
     public static function getEloquentQuery(): Builder
     {
-        return static::getScopedObservationQuery()
-            ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
-                $user = auth()->user();
-                $subscriptionsTable = (new CommentSubscription())->getTable();
-
-                $query->where(function (Builder $scoped) use ($user, $subscriptionsTable) {
-                    $scoped
-                        ->where('pic_id', $user->getKey())
-                        ->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
-                            $subQuery
-                                ->selectRaw('1')
-                                ->from($subscriptionsTable)
-                                ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
-                                ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
-                                ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
-                                ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
-                        });
-                });
-            })
-            ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
-                $query->where('auditor_id', auth()->user()->getKey());
-            });
+        return static::applyObservationVisibility(
+            static::getScopedObservationQuery(),
+            auth()->user(),
+            includeSubscriptions: true,
+        );
     }
 
     public static function getScopedObservationQuery(): Builder
@@ -92,6 +83,54 @@ class ObservationResource extends Resource
         }
 
         return $query->whereIn('dealer_id', $dealerIds);
+    }
+
+    public static function applyObservationVisibility(Builder $query, ?User $user = null, bool $includeSubscriptions = false): Builder
+    {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasRole('remediator')) {
+            return static::applyRemediatorVisibility($query, $user, $includeSubscriptions);
+        }
+
+        if ($user->hasRole('representative')) {
+            return $query->where('pic_id', $user->getKey());
+        }
+
+        if ($user->hasRole('contributor')) {
+            return $query->where('auditor_id', $user->getKey());
+        }
+
+        return $query;
+    }
+
+    protected static function applyRemediatorVisibility(Builder $query, User $user, bool $includeSubscriptions = false): Builder
+    {
+        $subscriptionsTable = (new CommentSubscription)->getTable();
+
+        return $query->where(function (Builder $scoped) use ($user, $includeSubscriptions, $subscriptionsTable) {
+            $scoped
+                ->where('pic_id', $user->getKey())
+                ->orWhereHas('pic', fn (Builder $picQuery) => $picQuery
+                    ->where('department_id', $user->department_id)
+                    ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'representative')));
+
+            if (! $includeSubscriptions) {
+                return;
+            }
+
+            $scoped->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
+                $subQuery
+                    ->selectRaw('1')
+                    ->from($subscriptionsTable)
+                    ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
+                    ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
+                    ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
+                    ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
+            });
+        });
     }
 
     public static function form(Schema $schema): Schema

@@ -23,20 +23,23 @@ class NewLogin extends BaseLogin
     public function getLoginFormComponent(): Component
     {
         return TextInput::make('login')
+            ->label('Username or Email')
             ->required()
             ->autofocus()
-            ->autocomplete()
+            ->autocomplete('username')
             ->placeholder('Enter your username or email address')
             ->extraInputAttributes(['tabindex' => 1]);
     }
     protected function getCredentialsFromFormData(#[SensitiveParameter] array $data): array
     {
-        $login_type = filter_var($data['login'], FILTER_VALIDATE_EMAIL)
+        $login = trim((string) $data['login']);
+
+        $login_type = filter_var($login, FILTER_VALIDATE_EMAIL)
             ? 'email'
             : 'username';
 
         return [
-            $login_type => $data['login'],
+            $login_type => $login,
             'password' => $data['password'],
         ];
     }

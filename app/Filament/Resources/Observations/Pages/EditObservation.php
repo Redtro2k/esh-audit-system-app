@@ -11,8 +11,6 @@ use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\ForResolved;
-
 
 class EditObservation extends EditRecord
 {
@@ -49,7 +47,11 @@ class EditObservation extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if(auth()->user()->hasRole('remediator')) {
+        if (! auth()->user()->hasAnyRole(['remediator', 'representative'])) {
+            $data['target_date'] = $this->getRecord()->target_date;
+        }
+
+        if (auth()->user()->hasAnyRole(['remediator', 'representative'])) {
             $data['date_captured'] = Carbon::now('Asia/Manila');
             $data['status'] = 'ongoing';
         }
@@ -58,19 +60,16 @@ class EditObservation extends EditRecord
             $data['status'] = $this->getRecord()->status;
         }
 
-        if(auth()->user()->hasRole('auditor') && strtolower($data['status']) === 'resolved') {
-            $data['date_resolved'] = Carbon::now('Asia/Manila');
-        }
         return $data;
     }
 
     protected function afterSave(): void
     {
-        if($this->getRecord()->wasChanged('status')) {
+        if ($this->getRecord()->wasChanged('status')) {
             switch (strtolower($this->getRecord()->status)) {
                 case 'for further discussion':
-                     Mail::to($this->getRecord()->pic->email)->send(new \App\Mail\ForFutherDiscussion($this->getRecord()));
-                     break;
+                    Mail::to($this->getRecord()->pic->email)->send(new \App\Mail\ForFutherDiscussion($this->getRecord()));
+                    break;
                 case 'resolved':
                     Mail::to($this->getRecord()->pic->email)->send(new \App\Mail\ForResolved($this->getRecord()));
                     break;
@@ -82,7 +81,9 @@ class EditObservation extends EditRecord
     {
         return [
             ViewAction::make(),
-            DeleteAction::make()->hidden(auth()->user()->hasRole('remediator')),
+            DeleteAction::make()
+                ->authorize(auth()->user()?->hasRole('developer') ?? false)
+                ->hidden(! auth()->user()->hasRole('developer')),
         ];
     }
 

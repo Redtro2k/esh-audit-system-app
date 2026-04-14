@@ -2,28 +2,28 @@
 
 namespace App\Filament\Resources\Observations\Tables;
 
+use App\Models\Observation;
+use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
-use Filament\Actions\Action;
-use App\Models\Observation;
-use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Carbon;
-use Filament\Actions\ExportAction;
-
+use Illuminate\Support\Facades\Mail;
 
 class ObservationsTable
 {
-
     public static function configure(Table $table): Table
     {
         return $table
@@ -88,26 +88,63 @@ class ObservationsTable
                 TextColumn::make('target_date')
                     ->label('Target Date')
                     ->date('M j, Y')
+                    ->placeholder('No target date')
                     ->color(function ($record) {
-                        if (!$record->target_date) {
-                            return 'secondary';
+                        if (! $record->target_date) {
+                            return 'gray';
                         }
                         $isOverdue = Carbon::parse($record->target_date)->isPast()
                             && strtolower((string) $record->status) !== 'resolved';
+
                         return $isOverdue ? 'danger' : 'secondary';
                     })
                     ->sortable()
                     ->toggleable(),
-//                SelectColumn::make('status')
-//                    ->hidden(!auth()->user()->hasRole('auditor'))
-//                    ->label('Status')
-//                    ->options([
-//                        'pending' => 'Pending',
-//                        'ongoing' => 'Ongoing',
-//                        'for further discussion' => 'For Further Discussion',
-//                        'resolved' => 'Resolved',
-//                    ])
-//                ->native(false)
+                TextColumn::make('date_captured')
+                    ->label('Date Captured')
+                    ->dateTime('M j, Y g:i A')
+                    ->placeholder('No date captured')
+                    ->color('secondary')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('date_pending')
+                    ->label('Date Pending')
+                    ->dateTime('M j, Y g:i A')
+                    ->placeholder('No pending date')
+                    ->color('secondary')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('date_ongoing')
+                    ->label('Date Ongoing')
+                    ->dateTime('M j, Y g:i A')
+                    ->placeholder('No ongoing date')
+                    ->color('secondary')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('date_for_further_discussion')
+                    ->label('Date For Further Discussion')
+                    ->dateTime('M j, Y g:i A')
+                    ->placeholder('No discussion date')
+                    ->color('secondary')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('date_resolved')
+                    ->label('Date Resolved')
+                    ->dateTime('M j, Y g:i A')
+                    ->placeholder('No resolved date')
+                    ->color('secondary')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                //                SelectColumn::make('status')
+                //                    ->hidden(!auth()->user()->hasRole('auditor'))
+                //                    ->label('Status')
+                //                    ->options([
+                //                        'pending' => 'Pending',
+                //                        'ongoing' => 'Ongoing',
+                //                        'for further discussion' => 'For Further Discussion',
+                //                        'resolved' => 'Resolved',
+                //                    ])
+                //                ->native(false)
             ])
             ->filters([
                 Filter::make('pending')
@@ -140,23 +177,23 @@ class ObservationsTable
                     ->label('Created Date')
                     ->form([
                         DatePicker::make('from')
-                        ->native(false),
+                            ->native(false),
                         DatePicker::make('until')
-                        ->native(false),
+                            ->native(false),
                     ])
-                    ->query(fn ($query, $data) =>
-                    $query
+                    ->query(fn ($query, $data) => $query
                         ->when($data['from'], fn ($q) => $q->whereDate('created_at', '>=', $data['from']))
                         ->when($data['until'], fn ($q) => $q->whereDate('created_at', '<=', $data['until']))
                     )
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-                        if (!empty($data['from'])) {
-                            $indicators[] = 'From ' . Carbon::parse($data['from'])->toFormattedDateString();
+                        if (! empty($data['from'])) {
+                            $indicators[] = 'From '.Carbon::parse($data['from'])->toFormattedDateString();
                         }
-                        if (!empty($data['until'])) {
-                            $indicators[] = 'Until ' . Carbon::parse($data['until'])->toFormattedDateString();
+                        if (! empty($data['until'])) {
+                            $indicators[] = 'Until '.Carbon::parse($data['until'])->toFormattedDateString();
                         }
+
                         return $indicators;
                     }),
                 Filter::make('overdue')
@@ -164,7 +201,7 @@ class ObservationsTable
                     ->query(function ($query) {
                         $query->whereDate('target_date', '<', now())
                             ->where('status', '!=', 'resolved');
-                    })
+                    }),
             ])
             ->recordActions([
                 Action::make('Nudge')
@@ -173,19 +210,47 @@ class ObservationsTable
                     ->iconButton()
                     ->tooltip('Send reminder to PIC')
                     ->requiresConfirmation()
-                    ->hidden(fn ($record) => !auth()->user()->hasRole('auditor') || strtolower($record->status) === 'resolved')
+                    ->hidden(fn ($record) => ! auth()->user()->hasRole('auditor') || strtolower($record->status) === 'resolved')
                     ->modalHeading('Send reminder?')
                     ->modalDescription('This will email the PIC with the observation details.')
-                    ->action(function ($record){
-                           $observation = Observation::with('pic', 'auditor', 'pic.department')->find($record->id);
-                           switch (strtolower($record->status)) {
-                               case 'for further discussion':
-                                    Mail::to($observation->pic->email)->send(new \App\Mail\ForFutherDiscussion($observation));
-                                    break;
-                               case 'pending':
-                                    Mail::to($observation->pic->email)->send(new \App\Mail\SendObservation($observation));
-                                    break;
-                           }
+                    ->action(function ($record) {
+                        $observation = Observation::with('pic', 'auditor', 'pic.department')->find($record->id);
+                        switch (strtolower($record->status)) {
+                            case 'for further discussion':
+                                Mail::to($observation->pic->email)->send(new \App\Mail\ForFutherDiscussion($observation));
+                                break;
+                            case 'pending':
+                                Mail::to($observation->pic->email)->send(new \App\Mail\SendObservation($observation));
+                                break;
+                        }
+                    }),
+                Action::make('addPromiseDate')
+                    ->label('Promise Date')
+                    ->icon(LucideIcon::ClipboardPen)
+                    ->iconButton()
+                    ->tooltip('Set promise date')
+                    ->hidden(fn ($record) => ! auth()->user()->hasAnyRole(['remediator', 'representative'])
+                        || (int) $record->pic_id !== (int) auth()->id()
+                        || filled($record->target_date)
+                        || strtolower((string) $record->status) === 'resolved')
+                    ->modalHeading('Set promise date')
+                    ->modalDescription('Add the promised completion date for this observation.')
+                    ->form([
+                        DateTimePicker::make('target_date')
+                            ->label('Promise Date')
+                            ->placeholder('Select promise date and time')
+                            ->native(false)
+                            ->required(),
+                    ])
+                    ->action(function (array $data, Observation $record): void {
+                        $record->update([
+                            'target_date' => $data['target_date'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Promise date saved')
+                            ->success()
+                            ->send();
                     }),
                 ViewAction::make()
                     ->iconButton()
@@ -199,8 +264,10 @@ class ObservationsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ExportAction::make()
+                    DeleteBulkAction::make()
+                        ->authorize(auth()->user()?->hasRole('developer') ?? false)
+                        ->hidden(! auth()->user()->hasRole('developer')),
+                    ExportBulkAction::make()
                         ->label('Export')
                         ->icon(LucideIcon::FileSpreadsheet)
                         ->columnMapping(false)

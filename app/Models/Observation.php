@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Kirschbaum\Commentions\Contracts\Commentable;
 use Kirschbaum\Commentions\HasComments;
 
-
 class Observation extends Model implements Commentable
 {
     use HasComments;
@@ -19,12 +18,19 @@ class Observation extends Model implements Commentable
         'concern' => 'array',
         'capture_concern' => 'array',
         'capture_solved' => 'array',
+        'target_date' => 'datetime',
+        'date_captured' => 'datetime',
+        'date_pending' => 'datetime',
+        'date_ongoing' => 'datetime',
+        'date_for_further_discussion' => 'datetime',
+        'date_resolved' => 'datetime',
     ];
 
     public function auditor(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'auditor_id');
     }
+
     public function pic(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'pic_id');

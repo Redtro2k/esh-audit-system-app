@@ -66,7 +66,14 @@ class ObservationInfolist
                     ]),
                 TextEntry::make('auditor.name')->label('Auditor Name'),
                 TextEntry::make('dealer.name')->label('Dealer'),
-                TextEntry::make('target_date')->label('Target Date')->dateTime('l, F d, Y h:i A'),
+                TextEntry::make('date_captured')
+                    ->label('Date Captured')
+                    ->dateTime('l, F d, Y h:i A')
+                    ->placeholder('No Date Captured'),
+                TextEntry::make('target_date')
+                    ->label('Target Date')
+                    ->dateTime('l, F d, Y h:i A')
+                    ->placeholder('No target date'),
                 TextEntry::make('status')
                     ->size(TextSize::Large)
                     ->weight(FontWeight::Bold)
@@ -120,10 +127,6 @@ class ObservationInfolist
                     ->placeholder('No Counter Measure')
                     ->label('Counter Measure')
                     ->html(),
-                TextEntry::make('date_captured')
-                    ->label('Date Captured')
-                    ->dateTime('l, F d, Y h:i A')
-                    ->placeholder('No Date Captured'),
                 TextEntry::make('date_resolved')
                     ->label('Date Resolved')
                     ->dateTime('l, F d, Y h:i A')

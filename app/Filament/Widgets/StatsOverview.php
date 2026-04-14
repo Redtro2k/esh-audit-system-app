@@ -5,17 +5,15 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\Observations\ObservationResource;
 use App\Support\ObservationAnalyticsCache;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
-
 class StatsOverview extends StatsOverviewWidget
 {
-
     use InteractsWithPageFilters;
 
     protected ?string $heading = 'Audit statistics';
@@ -24,6 +22,7 @@ class StatsOverview extends StatsOverviewWidget
     {
         return false;
     }
+
     protected function getStats(): array
     {
         $counts = $this->getStatusCounts();
@@ -52,7 +51,7 @@ class StatsOverview extends StatsOverviewWidget
     public function getStatusCounts(): array
     {
         $startDate = $this->pageFilters['startDate'] ?? now()->startOfMonth();
-        $endDate  = $this->pageFilters['endDate'] ?? now()->endOfMonth();
+        $endDate = $this->pageFilters['endDate'] ?? now()->endOfMonth();
         $dealerIds = $this->getVisibleDealerIds();
 
         return ObservationAnalyticsCache::remember(
@@ -63,18 +62,14 @@ class StatsOverview extends StatsOverviewWidget
                 'userId' => auth()->id(),
                 'dealerIds' => $dealerIds->all(),
                 'isRemediator' => auth()->user()?->hasRole('remediator') ?? false,
+                'isRepresentative' => auth()->user()?->hasRole('representative') ?? false,
                 'isContributor' => auth()->user()?->hasRole('contributor') ?? false,
+                'departmentId' => auth()->user()?->department_id,
             ],
             now()->addMinutes(10),
             function () use ($startDate, $endDate, $dealerIds): array {
                 $counts = $this->getWidgetScopedObservationQuery($dealerIds)
                     ->whereBetween('created_at', [$startDate, $endDate])
-                    ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
-                        $query->where('pic_id', auth()->id());
-                    })
-                    ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
-                        $query->where('auditor_id', auth()->id());
-                    })
                     ->selectRaw('status, count(*) as total')
                     ->groupBy('status')
                     ->pluck('total', 'status');
@@ -93,7 +88,6 @@ class StatsOverview extends StatsOverviewWidget
     {
         $query = ObservationResource::getScopedObservationQuery();
         $user = auth()->user();
-        $dealerIds ??= $this->getVisibleDealerIds();
 
         if (! $user) {
             return $query->whereRaw('1 = 0');
@@ -103,11 +97,7 @@ class StatsOverview extends StatsOverviewWidget
             return $query;
         }
 
-        if ($dealerIds->isEmpty()) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->whereIn('dealer_id', $dealerIds->all());
+        return ObservationResource::applyObservationVisibility($query, $user);
     }
 
     protected function getVisibleDealerIds(): Collection
@@ -117,7 +107,7 @@ class StatsOverview extends StatsOverviewWidget
 
     protected function getTabUrl(string $tab): string
     {
-        return url('/admin/observations?' . http_build_query([
+        return url('/admin/observations?'.http_build_query([
             'filters' => [
                 $tab => [
                     'isActive' => true,
@@ -129,10 +119,10 @@ class StatsOverview extends StatsOverviewWidget
     protected function getHeading(): string
     {
         $startDate = $this->pageFilters['startDate'] ?? now()->startOfMonth();
-        $endDate  = $this->pageFilters['endDate'] ?? now()->endOfMonth();
+        $endDate = $this->pageFilters['endDate'] ?? now()->endOfMonth();
 
-        return 'Audit statistics (' . Carbon::parse($startDate)->toFormattedDateString()
-            . ' – ' . Carbon::parse($endDate)->toFormattedDateString() . ')';
+        return 'Audit statistics ('.Carbon::parse($startDate)->toFormattedDateString()
+            .' – '.Carbon::parse($endDate)->toFormattedDateString().')';
     }
 
     protected function getDescription(): ?string

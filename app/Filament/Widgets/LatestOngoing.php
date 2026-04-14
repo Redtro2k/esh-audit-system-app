@@ -4,24 +4,25 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Observations\ObservationResource;
 use App\Filament\Resources\Observations\Pages\ViewObservation;
+use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Actions\BulkActionGroup;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
-use Filament\Widgets\Concerns\InteractsWithPageFilters;
-
 
 class LatestOngoing extends TableWidget
 {
-        use InteractsWithPageFilters;
+    use InteractsWithPageFilters;
 
     protected static ?int $sort = 2;
-    protected int | string | array $columnSpan = 'full';
+
+    protected int|string|array $columnSpan = 'full';
+
     protected ?string $title = 'Latest ongoing audits';
     // protected ?string $description = 'Most recent ongoing audits within the selected date range.';
 
@@ -33,7 +34,7 @@ class LatestOngoing extends TableWidget
     public function table(Table $table): Table
     {
         $startDate = $this->pageFilters['startDate'] ?? now()->startOfMonth();
-        $endDate  = $this->pageFilters['endDate'] ?? now()->endOfMonth();
+        $endDate = $this->pageFilters['endDate'] ?? now()->endOfMonth();
 
         return $table
             ->query(fn (): Builder => $this->getWidgetScopedObservationQuery()
@@ -45,100 +46,93 @@ class LatestOngoing extends TableWidget
                             $q->whereIn('status', ['ongoing', 'for further discussion'])
                                 ->whereBetween('created_at', [$startDate, $endDate]);
                         });
-                })
-                ->when(auth()->user()->hasRole('remediator'), function (Builder $query) {
-                    $query->where('pic_id', auth()->user()->getKey());
-                })
-                ->when(auth()->user()->hasRole('contributor'), function (Builder $query) {
-                    $query->where('auditor_id', auth()->user()->getKey());
                 }))
-                    ->emptyStateHeading('No ongoing audits')
-                    ->emptyStateDescription('Try adjusting the date range or check back later.')
-                    ->columns([
-                        TextColumn::make('status')
-                            ->label('Status')
-                            ->badge()
-                            ->formatStateUsing(fn (string $state): string => ucwords(strtolower($state)))
-                            ->icon(fn (string $state) => match (strtolower($state)) {
-                                'pending' => LucideIcon::ClipboardClock,
-                                'ongoing' => LucideIcon::ClipboardPenLine,
-                                'for further discussion' => LucideIcon::MessageSquareMore,
-                                'resolved' => LucideIcon::ClipboardCheck,
-                                default => LucideIcon::CircleHelp,
-                            })
-                            ->color(fn (string $state) => match (strtolower($state)) {
-                                'pending' => 'gray',
-                                'ongoing' => 'warning',
-                                'for further discussion' => 'info',
-                                'resolved' => 'success',
-                                default => 'secondary',
-                            })
-                            ->sortable(),
-                        TextColumn::make('pic.department.name')
-                            ->label('Department')
-                            ->sortable()
-                            ->toggleable(),
-                        TextColumn::make('pic.name')
-                            ->label('PIC')
-                            ->searchable()
-                            ->sortable()
-                            ->limit(24)
-                            ->tooltip(fn (?string $state) => $state)
-                            ->toggleable(),
-                        TextColumn::make('area')
-                            ->label('Audit Area')
-                            ->searchable()
-                            ->sortable()
-                            ->limit(28)
-                            ->tooltip(fn (?string $state) => $state)
-                            ->toggleable(),
-                        TextColumn::make('auditor.name')
-                            ->label('Auditor')
-                            ->sortable()
-                            ->limit(24)
-                            ->tooltip(fn (?string $state) => $state)
-                            ->toggleable(),
-                        ImageColumn::make('capture_concern')->label('Concern Proof')->circular()->stacked()
-                            ->imageGallery()
-                            ->stacked()
-                            ->ring(5)->limit(5)
-                            ->toggleable(),
-                        TextColumn::make('target_date')
-                            ->label('Target Date')
-                            ->date('M j, Y')
-                            ->color(function ($record) {
-                                if (!$record->target_date) {
-                                    return 'secondary';
-                                }
-                                $isOverdue = Carbon::parse($record->target_date)->isPast()
-                                    && strtolower((string) $record->status) !== 'resolved';
-                                return $isOverdue ? 'danger' : 'secondary';
-                            })
-                            ->sortable()
-                            ->toggleable(),
-                    ])
-                    ->defaultSort('target_date', 'asc')
-                    ->filters([
-                        //
-                    ])
-                    ->headerActions([
-                        //
-                    ])
-                    ->recordUrl(fn ($record) =>
-                    ViewObservation::getUrl(['record' => $record->id])
-                    )
-                    ->toolbarActions([
-                        BulkActionGroup::make([
-                            //
-                        ]),
-                    ]);
-            }
+            ->emptyStateHeading('No ongoing audits')
+            ->emptyStateDescription('Try adjusting the date range or check back later.')
+            ->columns([
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucwords(strtolower($state)))
+                    ->icon(fn (string $state) => match (strtolower($state)) {
+                        'pending' => LucideIcon::ClipboardClock,
+                        'ongoing' => LucideIcon::ClipboardPenLine,
+                        'for further discussion' => LucideIcon::MessageSquareMore,
+                        'resolved' => LucideIcon::ClipboardCheck,
+                        default => LucideIcon::CircleHelp,
+                    })
+                    ->color(fn (string $state) => match (strtolower($state)) {
+                        'pending' => 'gray',
+                        'ongoing' => 'warning',
+                        'for further discussion' => 'info',
+                        'resolved' => 'success',
+                        default => 'secondary',
+                    })
+                    ->sortable(),
+                TextColumn::make('pic.department.name')
+                    ->label('Department')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('pic.name')
+                    ->label('PIC')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(24)
+                    ->tooltip(fn (?string $state) => $state)
+                    ->toggleable(),
+                TextColumn::make('area')
+                    ->label('Audit Area')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(28)
+                    ->tooltip(fn (?string $state) => $state)
+                    ->toggleable(),
+                TextColumn::make('auditor.name')
+                    ->label('Auditor')
+                    ->sortable()
+                    ->limit(24)
+                    ->tooltip(fn (?string $state) => $state)
+                    ->toggleable(),
+                ImageColumn::make('capture_concern')->label('Concern Proof')->circular()->stacked()
+                    ->imageGallery()
+                    ->stacked()
+                    ->ring(5)->limit(5)
+                    ->toggleable(),
+                TextColumn::make('target_date')
+                    ->label('Target Date')
+                    ->date('M j, Y')
+                    ->color(function ($record) {
+                        if (! $record->target_date) {
+                            return 'secondary';
+                        }
+                        $isOverdue = Carbon::parse($record->target_date)->isPast()
+                            && strtolower((string) $record->status) !== 'resolved';
+
+                        return $isOverdue ? 'danger' : 'secondary';
+                    })
+                    ->sortable()
+                    ->toggleable(),
+            ])
+            ->defaultSort('target_date', 'asc')
+            ->filters([
+                //
+            ])
+            ->headerActions([
+                //
+            ])
+            ->recordUrl(fn ($record) => ViewObservation::getUrl(['record' => $record->id])
+            )
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    //
+                ]),
+            ]);
+    }
 
     protected function getWidgetScopedObservationQuery(): Builder
     {
         $query = ObservationResource::getScopedObservationQuery();
         $user = auth()->user();
-        $dealerIds = $this->getVisibleDealerIds();
 
         if (! $user) {
             return $query->whereRaw('1 = 0');
@@ -148,11 +142,7 @@ class LatestOngoing extends TableWidget
             return $query;
         }
 
-        if ($dealerIds->isEmpty()) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->whereIn('dealer_id', $dealerIds->all());
+        return ObservationResource::applyObservationVisibility($query, $user);
     }
 
     protected function getVisibleDealerIds(): Collection

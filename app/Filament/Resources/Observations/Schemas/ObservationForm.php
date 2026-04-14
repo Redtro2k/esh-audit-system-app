@@ -7,7 +7,6 @@ use App\Models\Department;
 use App\Models\User;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Actions\Action;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
@@ -15,12 +14,13 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Grid;
+use Illuminate\Database\Eloquent\Builder;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\ValueObjects\Media\Image;
@@ -37,7 +37,7 @@ class ObservationForm
                     ->tabs([
                         Tab::make('Audit')
                             ->icon(LucideIcon::ClipboardCheck)
-                            ->hidden(fn($q) => auth()->user()->hasRole('remediator'))
+                            ->hidden(fn ($q) => auth()->user()->hasAnyRole(['remediator', 'representative']))
                             ->schema([
                                 Grid::make(3)->schema([
                                     Select::make('dealer_id')
@@ -62,9 +62,17 @@ class ObservationForm
                                         ->dehydrated()
                                         ->live()
                                         ->default(fn (): ?int => self::currentUserDealerId())
-                                        ->afterStateHydrated(function (Set $set, $state): void {
+                                        ->afterStateHydrated(function (Set $set, Get $get, $state, $record): void {
                                             if (self::currentUserMustUseAssignedDealer() && blank($state)) {
                                                 $set('dealer_id', self::currentUserDealerId());
+                                            }
+
+                                            if (! $record && filled($state ?: self::resolveDealerId($get))) {
+                                                self::syncDepartmentAndPicSelection(
+                                                    set: $set,
+                                                    get: $get,
+                                                    dealerId: $state ?: self::resolveDealerId($get),
+                                                );
                                             }
                                         })
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
@@ -73,12 +81,13 @@ class ObservationForm
                                                 : self::resolveDealerId($get);
 
                                             if (blank($effectiveDealerId)) {
+                                                $set('department', null);
                                                 $set('pic_id', null);
 
                                                 return;
                                             }
 
-                                            self::syncPicSelection(
+                                            self::syncDepartmentAndPicSelection(
                                                 set: $set,
                                                 get: $get,
                                                 dealerId: $effectiveDealerId,
@@ -87,9 +96,9 @@ class ObservationForm
                                     Select::make('department')
                                         ->label('Department')
                                         ->placeholder('Select a department')
-                                        ->helperText('Choose the department that owns this observation.')
+                                        ->helperText('Choose the department that owns this observation. Dealer selection will narrow the available departments.')
                                         ->native(false)
-                                        ->options(Department::pluck('name', 'id'))
+                                        ->options(fn (Get $get): array => self::getDepartmentOptions($get))
                                         ->live()
                                         ->dehydrated(false)
                                         ->afterStateHydrated(function (Set $set, Get $get, $record) {
@@ -103,7 +112,8 @@ class ObservationForm
                                                 get: $get,
                                                 departmentId: $state,
                                             );
-                                        }),
+                                        })
+                                        ->disabled(fn (Get $get): bool => blank(self::resolveDealerId($get))),
                                     Select::make('pic_id')
                                         ->label('PIC')
                                         ->placeholder('Select PIC')
@@ -128,7 +138,7 @@ class ObservationForm
                                             ->placeholder('Select concern category')
                                             ->options(ConcernCategory::query()->whereNull('parent_id')->pluck('name', 'id'))
                                             ->live()
-                                            ->helperText(fn(Get $get) => $get('concern_type')
+                                            ->helperText(fn (Get $get) => $get('concern_type')
                                                 ? implode(', ', ConcernCategory::query()->where('parent_id', $get('concern_type'))->pluck('name')->toArray())
                                                 : 'Select a category to view available concerns.')
                                             ->nullable(false),
@@ -140,6 +150,14 @@ class ObservationForm
                                     ]),
                                 Grid::make()
                                     ->schema([
+                                        DateTimePicker::make('date_captured')
+                                            ->label('Date Captured')
+                                            ->placeholder('Select capture date and time')
+                                            ->helperText('Optional. Use this if you want to record when the observation was captured.')
+                                            ->hidden(fn () => auth()->user()->hasAnyRole(['remediator', 'representative']))
+                                            ->hiddenOn('edit')
+                                            ->nullable()
+                                            ->native(false),
                                         Radio::make('status')
                                             ->helperText('Set the current progress of this observation.')
                                             ->hiddenOn('create')
@@ -147,11 +165,6 @@ class ObservationForm
                                             ->inline()
                                             ->nullable(false)
                                             ->options(self::statusOptions()),
-                                    DateTimePicker::make('target_date')
-                                            ->label('Target Date')
-                                            ->placeholder('Select target date and time')
-                                            ->helperText('Choose the expected completion date for this observation.')
-                                            ->nullable(false),
                                     ]),
                                 FileUpload::make('capture_concern')
                                     ->label('Proof Concern')
@@ -161,16 +174,22 @@ class ObservationForm
                                     ->disk('public') // 🔥 VERY IMPORTANT
                                     ->directory('concerns') // optional but recommended
                                     ->visibility('public') // 🔥 ensure accessible
-                                    ->maxSize(1024)
+                                    ->maxSize(10240)
                                     ->imageEditor()
                                     ->imageEditorMode(2)
                                     ->helperText('Upload one or more images that support the audit concern.'),
 
                             ]),
                         Tab::make('Counter Measure')
-                            ->hidden(fn($q) => auth()->user()->hasAnyRole(['auditor', 'contributor']))
+                            ->hidden(fn ($q) => auth()->user()->hasAnyRole(['auditor', 'contributor']))
                             ->icon(LucideIcon::ClipboardPen)
                             ->schema([
+                                DateTimePicker::make('target_date')
+                                    ->label('Target Date')
+                                    ->placeholder('Select target date and time')
+                                    ->helperText('PIC should set the expected completion date for this observation.')
+                                    ->required(auth()->user()->hasAnyRole(['remediator', 'representative']))
+                                    ->nullable(),
                                 FileUpload::make('capture_solved')
                                     ->label('Upload Solved')
                                     ->placeholder('Upload solved proof images')
@@ -180,10 +199,11 @@ class ObservationForm
                                     ->disk('public')
                                     ->directory('solved')
                                     ->visibility('public')
+                                    ->maxSize(10240)
                                     ->imageEditor()
                                     ->helperText('Upload one or more images showing the corrective action or completed fix.')
-                                    ->required(auth()->user()->hasRole('remediator')),
-                               Grid::make(2)
+                                    ->required(auth()->user()->hasAnyRole(['remediator', 'representative'])),
+                                Grid::make(2)
                                     ->schema([
                                         MarkdownEditor::make('counter_measure')
                                             ->label('Counter Measure')
@@ -247,7 +267,7 @@ class ObservationForm
                                                     })
                                             )
                                             ->hint('Use AI to improve your wording while keeping the same meaning.')
-                                            ->required(auth()->user()->hasRole('remediator')),
+                                            ->required(auth()->user()->hasAnyRole(['remediator', 'representative'])),
                                         MarkdownEditor::make('remarks')
                                             ->label('Remarks')
                                             ->helperText('Add supporting notes, clarifications, or important follow-up details.')
@@ -313,11 +333,11 @@ class ObservationForm
                                                         }
                                                     })
                                             )
-                                            ->hint('Use AI to improve your wording while keeping the same meaning.')
-                                    ])
+                                            ->hint('Use AI to improve your wording while keeping the same meaning.'),
+                                    ]),
 
-                            ])
-                    ])
+                            ]),
+                    ]),
             ]);
     }
 
@@ -402,6 +422,45 @@ PROMPT;
         return auth()->user()?->dealers()->orderBy('dealers.name')->value('dealers.id');
     }
 
+    private static function syncDepartmentAndPicSelection(Set $set, Get $get, mixed $dealerId = null): void
+    {
+        $dealerId ??= self::resolveDealerId($get);
+        $currentDepartmentId = $get('department');
+        $departmentOptions = self::getDepartmentOptions($get, $dealerId);
+
+        if ($departmentOptions === []) {
+            $set('department', null);
+            $set('pic_id', null);
+
+            return;
+        }
+
+        $departmentId = array_key_exists((string) $currentDepartmentId, array_combine(
+            array_map('strval', array_keys($departmentOptions)),
+            array_keys($departmentOptions),
+        ) ?: [])
+            ? $currentDepartmentId
+            : array_key_first($departmentOptions);
+
+        $set('department', $departmentId);
+
+        self::syncPicSelection(
+            set: $set,
+            get: $get,
+            dealerId: $dealerId,
+            departmentId: $departmentId,
+        );
+    }
+
+    private static function getDepartmentOptions(Get $get, mixed $dealerId = null): array
+    {
+        $dealerId ??= self::resolveDealerId($get);
+
+        return self::buildDepartmentQuery($dealerId)
+            ->pluck('name', 'id')
+            ->all();
+    }
+
     private static function syncPicSelection(Set $set, Get $get, mixed $dealerId = null, mixed $departmentId = null): void
     {
         $dealerId ??= self::resolveDealerId($get);
@@ -447,21 +506,32 @@ PROMPT;
     {
         $baseQuery = User::query()
             ->where('department_id', $departmentId)
-            ->role('remediator')
+            ->whereHas('roles', fn (Builder $query) => $query->whereIn('name', ['remediator', 'representative']))
             ->orderBy('name');
 
         if (blank($dealerId)) {
             return $baseQuery;
         }
 
-        $dealerScopedQuery = (clone $baseQuery)
+        return $baseQuery
             ->whereHas('dealers', fn ($query) => $query->whereKey($dealerId));
+    }
 
-        if ($dealerScopedQuery->exists()) {
-            return $dealerScopedQuery;
+    private static function buildDepartmentQuery(mixed $dealerId = null): Builder
+    {
+        $query = Department::query()
+            ->whereHas('users', fn (Builder $query) => $query
+                ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', ['remediator', 'representative'])));
+
+        if (blank($dealerId)) {
+            return $query->orderBy('name');
         }
 
-        return $baseQuery;
+        return $query
+            ->whereHas('users', fn (Builder $query) => $query
+                ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', ['remediator', 'representative']))
+                ->whereHas('dealers', fn ($dealerQuery) => $dealerQuery->whereKey($dealerId)))
+            ->orderBy('name');
     }
 
     private static function resolveDealerId(Get $get): mixed
