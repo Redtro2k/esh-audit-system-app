@@ -11,11 +11,13 @@ class ObservationObserver
     public function creating(Observation $observation): void
     {
         $this->syncStatusDates($observation);
+        $this->syncCounterMeasureDate($observation);
     }
 
     public function updating(Observation $observation): void
     {
         $this->syncStatusDates($observation);
+        $this->syncCounterMeasureDate($observation);
     }
 
     public function created(Observation $observation): void
@@ -62,5 +64,20 @@ class ObservationObserver
                 default => null,
             };
         }
+    }
+
+    protected function syncCounterMeasureDate(Observation $observation): void
+    {
+        if (! $observation->isDirty(['counter_measure', 'remarks', 'capture_solved'])) {
+            return;
+        }
+
+        $hasCounterMeasureUpdate = filled(trim(strip_tags((string) $observation->counter_measure)))
+            || filled(trim(strip_tags((string) $observation->remarks)))
+            || filled($observation->capture_solved);
+
+        $observation->counter_measure_date = $hasCounterMeasureUpdate
+            ? Carbon::now('Asia/Manila')
+            : null;
     }
 }

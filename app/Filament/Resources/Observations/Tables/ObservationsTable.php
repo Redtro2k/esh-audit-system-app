@@ -128,6 +128,17 @@ class ObservationsTable
                     ->color('secondary')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                self::leadTimeColumn('pending_lead_time', 'Pending Lead Time', 'date_pending'),
+                self::leadTimeColumn('ongoing_lead_time', 'Ongoing Lead Time', 'date_ongoing'),
+                self::leadTimeColumn('discussion_lead_time', 'Discussion Lead Time', 'date_for_further_discussion'),
+                TextColumn::make('counter_measure_date')
+                    ->label('Counter Measure Date')
+                    ->dateTime('M j, Y g:i A')
+                    ->placeholder('No counter measure date')
+                    ->color('secondary')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                self::leadTimeColumn('counter_measure_lead_time', 'Counter Measure Lead Time', 'counter_measure_date'),
                 TextColumn::make('date_resolved')
                     ->label('Date Resolved')
                     ->dateTime('M j, Y g:i A')
@@ -135,6 +146,7 @@ class ObservationsTable
                     ->color('secondary')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                self::leadTimeColumn('resolved_lead_time', 'Resolved Lead Time', 'date_resolved'),
                 //                SelectColumn::make('status')
                 //                    ->hidden(!auth()->user()->hasRole('auditor'))
                 //                    ->label('Status')
@@ -274,5 +286,16 @@ class ObservationsTable
                         ->exporter(\App\Filament\Exports\ObservationExporter::class),
                 ]),
             ]);
+    }
+
+    protected static function leadTimeColumn(string $name, string $label, string $attribute): TextColumn
+    {
+        return TextColumn::make($name)
+            ->label($label)
+            ->state(fn (Observation $record): ?string => $record->formatLeadTime($attribute))
+            ->placeholder('No lead time')
+            ->badge()
+            ->color('gray')
+            ->toggleable(isToggledHiddenByDefault: true);
     }
 }

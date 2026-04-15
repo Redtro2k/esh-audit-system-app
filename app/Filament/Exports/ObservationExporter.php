@@ -16,7 +16,6 @@ class ObservationExporter extends Exporter
     public static function getColumns(): array
     {
         return [
-            //
             ExportColumn::make('status')->label('Status'),
             ExportColumn::make('pic.name')->label('Observer Name'),
             ExportColumn::make('pic.department.name')->label('Observer Department'),
@@ -28,18 +27,29 @@ class ObservationExporter extends Exporter
             ExportColumn::make('target_date')
                 ->label('Target Date')
                 ->formatStateUsing(fn ($state): ?string => self::formatDateTime($state)),
+            ExportColumn::make('date_captured')
+                ->label('Date Captured')
+                ->formatStateUsing(fn ($state): ?string => self::formatDateTime($state)),
             ExportColumn::make('date_pending')
                 ->label('Date Pending')
                 ->formatStateUsing(fn ($state): ?string => self::formatDateTime($state)),
+            self::leadTimeColumn('pending_lead_time', 'Pending Lead Time', 'date_pending'),
             ExportColumn::make('date_ongoing')
                 ->label('Date Ongoing')
                 ->formatStateUsing(fn ($state): ?string => self::formatDateTime($state)),
+            self::leadTimeColumn('ongoing_lead_time', 'Ongoing Lead Time', 'date_ongoing'),
             ExportColumn::make('date_for_further_discussion')
                 ->label('Date For Further Discussion')
                 ->formatStateUsing(fn ($state): ?string => self::formatDateTime($state)),
+            self::leadTimeColumn('discussion_lead_time', 'Discussion Lead Time', 'date_for_further_discussion'),
+            ExportColumn::make('counter_measure_date')
+                ->label('Counter Measure Date')
+                ->formatStateUsing(fn ($state): ?string => self::formatDateTime($state)),
+            self::leadTimeColumn('counter_measure_lead_time', 'Counter Measure Lead Time', 'counter_measure_date'),
             ExportColumn::make('date_resolved')
                 ->label('Date Resolved')
                 ->formatStateUsing(fn ($state): ?string => self::formatDateTime($state)),
+            self::leadTimeColumn('resolved_lead_time', 'Resolved Lead Time', 'date_resolved'),
             ExportColumn::make('remarks')->label('Remarks'),
             ExportColumn::make('auditor.name')->label('Auditor'),
             ExportColumn::make('created_at')
@@ -55,6 +65,13 @@ class ObservationExporter extends Exporter
         }
 
         return Carbon::parse($state)->format('Y-m-d H:i:s');
+    }
+
+    protected static function leadTimeColumn(string $name, string $label, string $attribute): ExportColumn
+    {
+        return ExportColumn::make($name)
+            ->label($label)
+            ->state(fn (Observation $record): ?string => $record->formatLeadTime($attribute));
     }
 
     public static function getCompletedNotificationBody(Export $export): string

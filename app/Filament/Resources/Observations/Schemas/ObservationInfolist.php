@@ -22,6 +22,7 @@ class ObservationInfolist
             ->components([
                 self::auditSection(),
                 self::responseSection(),
+                self::timelineSection(),
                 self::commentsSection(),
             ]);
     }
@@ -127,6 +128,15 @@ class ObservationInfolist
                     ->placeholder('No Counter Measure')
                     ->label('Counter Measure')
                     ->html(),
+                TextEntry::make('counter_measure_date')
+                    ->label('Counter Measure Date')
+                    ->dateTime('l, F d, Y h:i A')
+                    ->icon(LucideIcon::ClipboardPen)
+                    ->iconColor('primary')
+                    ->size(TextSize::Large)
+                    ->weight(FontWeight::Bold)
+                    ->color('primary')
+                    ->placeholder('No Counter Measure Date Captured'),
                 TextEntry::make('date_resolved')
                     ->label('Date Resolved')
                     ->dateTime('l, F d, Y h:i A')
@@ -148,6 +158,24 @@ class ObservationInfolist
             ]);
     }
 
+    protected static function timelineSection(): Section
+    {
+        return Section::make('Timeline')
+            ->icon(LucideIcon::ClipboardCheck)
+            ->iconColor('primary')
+            ->columnSpanFull()
+            ->description('Shows the observation milestone dates together with the lead time from capture.')
+            ->columns(2)
+            ->schema([
+                self::timelineEntry('date_captured', 'Date Captured'),
+                self::timelineEntry('date_pending', 'Date Pending', 'date_pending'),
+                self::timelineEntry('date_ongoing', 'Date Ongoing', 'date_ongoing'),
+                self::timelineEntry('date_for_further_discussion', 'Date For Further Discussion', 'date_for_further_discussion'),
+                self::timelineEntry('counter_measure_date', 'Counter Measure Date', 'counter_measure_date'),
+                self::timelineEntry('date_resolved', 'Date Resolved', 'date_resolved'),
+            ]);
+    }
+
     protected static function commentsSection(): Section
     {
         return Section::make('Comments')
@@ -164,5 +192,17 @@ class ObservationInfolist
                         'class' => 'max-h-96 overflow-y-auto',
                     ]),
             ]);
+    }
+
+    protected static function timelineEntry(string $name, string $label, ?string $leadTimeAttribute = null): TextEntry
+    {
+        return TextEntry::make($name)
+            ->label($label)
+            ->dateTime('l, F d, Y h:i A')
+            ->placeholder("No {$label}")
+            ->helperText(fn ($record): string => $leadTimeAttribute
+                ? ('Lead Time: '.($record?->formatLeadTime($leadTimeAttribute) ?? 'No lead time'))
+                : 'Lead Time baseline')
+            ->color('secondary');
     }
 }
