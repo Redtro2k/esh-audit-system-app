@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Observations\Schemas;
 
 use App\Models\ConcernCategory;
+use App\Models\Observation;
 use App\Models\User;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Infolists\Components\ImageEntry;
@@ -169,9 +170,8 @@ class ObservationInfolist
             ->schema([
                 self::timelineEntry('date_captured', 'Date Captured'),
                 self::timelineEntry('date_pending', 'Date Pending', 'date_pending'),
-                self::timelineEntry('date_ongoing', 'Date Ongoing', 'date_ongoing'),
+                self::combinedTimelineEntry(),
                 self::timelineEntry('date_for_further_discussion', 'Date For Further Discussion', 'date_for_further_discussion'),
-                self::timelineEntry('counter_measure_date', 'Counter Measure Date', 'counter_measure_date'),
                 self::timelineEntry('date_resolved', 'Date Resolved', 'date_resolved'),
             ]);
     }
@@ -203,6 +203,47 @@ class ObservationInfolist
             ->helperText(fn ($record): string => $leadTimeAttribute
                 ? ('Lead Time: '.($record?->formatLeadTime($leadTimeAttribute) ?? 'No lead time'))
                 : 'Lead Time baseline')
+            ->color('secondary');
+    }
+
+    protected static function combinedTimelineEntry(): TextEntry
+    {
+        return TextEntry::make('ongoing_counter_measure_timeline')
+            ->label('Date Ongoing / Counter Measure Date')
+            ->state(function (Observation $record): ?string {
+                $timestamps = collect([
+                    $record->date_ongoing
+                        ? 'Ongoing: '.$record->date_ongoing->format('l, F d, Y h:i A')
+                        : null,
+                    $record->counter_measure_date
+                        ? 'Counter Measure: '.$record->counter_measure_date->format('l, F d, Y h:i A')
+                        : null,
+                ])->filter()->values();
+
+                if ($timestamps->isEmpty()) {
+                    return null;
+                }
+
+                return $timestamps->implode('<br>');
+            })
+            ->html()
+            ->placeholder('No Date Ongoing / Counter Measure Date')
+            ->helperText(function (Observation $record): string {
+                $leadTimes = collect([
+                    $record->formatLeadTime('date_ongoing')
+                        ? 'Ongoing Lead Time: '.$record->formatLeadTime('date_ongoing')
+                        : null,
+                    $record->formatLeadTime('counter_measure_date')
+                        ? 'Counter Measure Lead Time: '.$record->formatLeadTime('counter_measure_date')
+                        : null,
+                ])->filter()->values();
+
+                if ($leadTimes->isEmpty()) {
+                    return 'No lead time';
+                }
+
+                return $leadTimes->implode(' | ');
+            })
             ->color('secondary');
     }
 }

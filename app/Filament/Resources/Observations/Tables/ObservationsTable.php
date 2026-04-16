@@ -237,20 +237,19 @@ class ObservationsTable
                         }
                     }),
                 Action::make('addPromiseDate')
-                    ->label('Promise Date')
+                    ->label('Target Date')
                     ->icon(LucideIcon::ClipboardPen)
                     ->iconButton()
-                    ->tooltip('Set promise date')
-                    ->hidden(fn ($record) => ! auth()->user()->hasAnyRole(['remediator', 'representative'])
-                        || (int) $record->pic_id !== (int) auth()->id()
+                    ->tooltip('Set target date')
+                    ->hidden(fn ($record) => ! auth()->user()->hasRole('auditor')
                         || filled($record->target_date)
                         || strtolower((string) $record->status) === 'resolved')
-                    ->modalHeading('Set promise date')
-                    ->modalDescription('Add the promised completion date for this observation.')
+                    ->modalHeading('Set target date')
+                    ->modalDescription('Add the expected completion date for this observation.')
                     ->form([
                         DateTimePicker::make('target_date')
-                            ->label('Promise Date')
-                            ->placeholder('Select promise date and time')
+                            ->label('Target Date')
+                            ->placeholder('Select target date and time')
                             ->native(false)
                             ->required(),
                     ])
@@ -260,7 +259,7 @@ class ObservationsTable
                         ]);
 
                         Notification::make()
-                            ->title('Promise date saved')
+                            ->title('Target date saved')
                             ->success()
                             ->send();
                     }),

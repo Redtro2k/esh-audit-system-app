@@ -158,6 +158,13 @@ class ObservationForm
                                             ->hiddenOn('edit')
                                             ->nullable()
                                             ->native(false),
+                                        DateTimePicker::make('target_date')
+                                            ->label('Target Date')
+                                            ->placeholder('Select target date and time')
+                                            ->helperText('Auditor can set the expected completion date for this observation.')
+                                            ->hidden(fn (): bool => ! auth()->user()->hasRole('auditor'))
+                                            ->nullable()
+                                            ->native(false),
                                         Radio::make('status')
                                             ->helperText('Set the current progress of this observation.')
                                             ->hiddenOn('create')
@@ -184,12 +191,6 @@ class ObservationForm
                             ->hidden(fn ($q) => auth()->user()->hasAnyRole(['auditor', 'contributor']))
                             ->icon(LucideIcon::ClipboardPen)
                             ->schema([
-                                DateTimePicker::make('target_date')
-                                    ->label('Target Date')
-                                    ->placeholder('Select target date and time')
-                                    ->helperText('PIC should set the expected completion date for this observation.')
-                                    ->required(auth()->user()->hasAnyRole(['remediator', 'representative']))
-                                    ->nullable(),
                                 FileUpload::make('capture_solved')
                                     ->label('Upload Solved')
                                     ->placeholder('Upload solved proof images')

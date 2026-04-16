@@ -20,7 +20,7 @@ class CreateObservation extends CreateRecord
             $data['dealer_id'] = auth()->user()?->dealers()->orderBy('dealers.name')->value('dealers.id');
         }
 
-        if (! auth()->user()->hasAnyRole(['remediator', 'representative'])) {
+        if (! auth()->user()->hasRole('auditor')) {
             $data['target_date'] = null;
         }
 

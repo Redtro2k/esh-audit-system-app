@@ -47,7 +47,7 @@ class EditObservation extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (! auth()->user()->hasAnyRole(['remediator', 'representative'])) {
+        if (! auth()->user()->hasRole('auditor')) {
             $data['target_date'] = $this->getRecord()->target_date;
         }
 
