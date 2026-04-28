@@ -23,9 +23,36 @@
         x-on:keydown.window.arrow-left="$wire.previousSlide()"
         x-on:keydown.window.arrow-right="$wire.nextSlide()"
         x-ref="stage"
-        class="presentation-stage min-h-[calc(100vh-12rem)] bg-white text-gray-950 dark:bg-gray-950 dark:text-white"
+        class="presentation-stage relative min-h-[calc(100vh-12rem)] overflow-hidden bg-white text-gray-950 dark:bg-gray-950 dark:text-white"
     >
         <style>
+            .presentation-stage > :not(style):not(.presentation-watermark) {
+                position: relative;
+                z-index: 1;
+            }
+
+            .presentation-watermark {
+                position: absolute;
+                inset: 0;
+                z-index: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: rgb(220 38 38);
+                opacity: 0.07;
+                pointer-events: none;
+            }
+
+            .dark .presentation-watermark {
+                color: rgb(248 113 113);
+                opacity: 0.1;
+            }
+
+            .presentation-watermark svg {
+                width: min(72rem, 86vw);
+                max-height: 70vh;
+            }
+
             .presentation-stage:fullscreen .presentation-filters {
                 display: none;
             }
@@ -34,6 +61,24 @@
                 display: none;
             }
         </style>
+
+        <div class="presentation-watermark" aria-hidden="true">
+            <svg viewBox="0 0 920 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="460" cy="116" rx="138" ry="72" stroke="currentColor" stroke-width="18" />
+                <ellipse cx="460" cy="116" rx="50" ry="72" stroke="currentColor" stroke-width="18" />
+                <ellipse cx="460" cy="116" rx="138" ry="36" stroke="currentColor" stroke-width="18" />
+                <text
+                    x="460"
+                    y="260"
+                    fill="currentColor"
+                    font-family="Arial, Helvetica, sans-serif"
+                    font-size="96"
+                    font-weight="800"
+                    letter-spacing="10"
+                    text-anchor="middle"
+                >TOYOTA</text>
+            </svg>
+        </div>
 
         <div class="presentation-filters border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/80">
             <div class="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
@@ -67,10 +112,10 @@
                         Presentation Mode
                     </p>
                     <h2 class="mt-3 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
-                        No open observations match these filters.
+                        No observations match these filters.
                     </h2>
                     <p class="mt-3 text-base text-gray-600 dark:text-gray-300">
-                        Adjust the filters or reset them to return to the full open-finding queue.
+                        Adjust the filters or reset them to return to the full audit queue.
                     </p>
                 </div>
             </div>

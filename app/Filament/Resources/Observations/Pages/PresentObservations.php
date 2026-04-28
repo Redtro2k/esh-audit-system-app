@@ -115,7 +115,7 @@ class PresentObservations extends Page
 
                 Select::make('status')
                     ->label('Status')
-                    ->placeholder('All open status')
+                    ->placeholder('All statuses')
                     ->options($this->getStatusOptions())
                     ->native(false)
                     ->afterStateUpdated(function (): void {
@@ -231,6 +231,7 @@ class PresentObservations extends Page
             'pending' => 'Pending',
             'ongoing' => 'Ongoing',
             'for further discussion' => 'For Further Discussion',
+            'resolved' => 'Resolved',
         ];
     }
 
@@ -262,6 +263,7 @@ class PresentObservations extends Page
             'pending' => 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700',
             'ongoing' => 'bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-700/60',
             'for further discussion' => 'bg-sky-100 text-sky-800 ring-sky-200 dark:bg-sky-900/40 dark:text-sky-200 dark:ring-sky-700/60',
+            'resolved' => 'bg-emerald-100 text-emerald-800 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200 dark:ring-emerald-700/60',
             default => 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700',
         };
     }
@@ -295,7 +297,7 @@ class PresentObservations extends Page
             ->when(filled($this->status), fn (Builder $query) => $query->where('status', $this->status))
             ->when(filled($this->capturedFrom), fn (Builder $query) => $query->whereDate('date_captured', '>=', $this->capturedFrom))
             ->when(filled($this->capturedUntil), fn (Builder $query) => $query->whereDate('date_captured', '<=', $this->capturedUntil))
-            ->orderByRaw('case when target_date is not null and target_date < ? then 0 else 1 end', [now()])
+            ->orderByRaw("case when status != 'resolved' and target_date is not null and target_date < ? then 0 else 1 end", [now()])
             ->orderByRaw('case when target_date is null then 1 else 0 end')
             ->orderBy('target_date')
             ->orderByRaw('coalesce(date_captured, created_at) desc');
