@@ -6,6 +6,7 @@ use App\Enum\NavigationGroup;
 use App\Filament\Resources\Observations\Pages\CreateObservation;
 use App\Filament\Resources\Observations\Pages\EditObservation;
 use App\Filament\Resources\Observations\Pages\ListObservations;
+use App\Filament\Resources\Observations\Pages\PresentObservations;
 use App\Filament\Resources\Observations\Pages\ViewObservation;
 use App\Filament\Resources\Observations\Schemas\ObservationForm;
 use App\Filament\Resources\Observations\Schemas\ObservationInfolist;
@@ -160,6 +161,7 @@ class ObservationResource extends Resource
         return [
             'index' => ListObservations::route('/'),
             'create' => CreateObservation::route('/create'),
+            'presentation' => PresentObservations::route('/presentation'),
             'view' => ViewObservation::route('/{record}'),
             'edit' => EditObservation::route('/{record}/edit'),
         ];
