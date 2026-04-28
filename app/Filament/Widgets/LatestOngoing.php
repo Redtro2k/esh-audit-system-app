@@ -3,16 +3,18 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Observations\ObservationResource;
-use App\Filament\Resources\Observations\Pages\ViewObservation;
-use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
-use Filament\Actions\BulkActionGroup;
+use App\Models\Observation;
+use Filament\Actions\ViewAction;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class LatestOngoing extends TableWidget
@@ -21,10 +23,11 @@ class LatestOngoing extends TableWidget
 
     protected static ?int $sort = 2;
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 2;
 
     protected ?string $title = 'Latest ongoing audits';
-    // protected ?string $description = 'Most recent ongoing audits within the selected date range.';
+
+    protected ?string $description = 'Timeline feed for active audit observations.';
 
     public function persistsFiltersInSession(): bool
     {
@@ -47,86 +50,83 @@ class LatestOngoing extends TableWidget
                                 ->whereBetween('created_at', [$startDate, $endDate]);
                         });
                 }))
+            ->defaultSort('created_at', 'desc')
+            ->defaultGroup(
+                Group::make('created_at')
+                    ->date()
+                    ->orderQueryUsing(fn (Builder $query) => $query->orderByDesc('created_at'))
+            )
             ->emptyStateHeading('No ongoing audits')
             ->emptyStateDescription('Try adjusting the date range or check back later.')
             ->columns([
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->formatStateUsing(fn (string $state): string => ucwords(strtolower($state)))
-                    ->icon(fn (string $state) => match (strtolower($state)) {
-                        'pending' => LucideIcon::ClipboardClock,
-                        'ongoing' => LucideIcon::ClipboardPenLine,
-                        'for further discussion' => LucideIcon::MessageSquareMore,
-                        'resolved' => LucideIcon::ClipboardCheck,
-                        default => LucideIcon::CircleHelp,
-                    })
-                    ->color(fn (string $state) => match (strtolower($state)) {
-                        'pending' => 'gray',
-                        'ongoing' => 'warning',
-                        'for further discussion' => 'info',
-                        'resolved' => 'success',
-                        default => 'secondary',
-                    })
-                    ->sortable(),
-                TextColumn::make('pic.department.name')
-                    ->label('Department')
-                    ->sortable()
-                    ->toggleable(),
-                TextColumn::make('pic.name')
-                    ->label('PIC')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(24)
-                    ->tooltip(fn (?string $state) => $state)
-                    ->toggleable(),
-                TextColumn::make('area')
-                    ->label('Audit Area')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(28)
-                    ->tooltip(fn (?string $state) => $state)
-                    ->toggleable(),
-                TextColumn::make('auditor.name')
-                    ->label('Auditor')
-                    ->sortable()
-                    ->limit(24)
-                    ->tooltip(fn (?string $state) => $state)
-                    ->toggleable(),
-                ImageColumn::make('capture_concern')->label('Concern Proof')->circular()->stacked()
-                    ->imageGallery()
-                    ->stacked()
-                    ->ring(5)->limit(5)
-                    ->toggleable(),
-                TextColumn::make('target_date')
-                    ->label('Target Date')
-                    ->date('M j, Y')
-                    ->color(function ($record) {
-                        if (! $record->target_date) {
-                            return 'secondary';
-                        }
-                        $isOverdue = Carbon::parse($record->target_date)->isPast()
-                            && strtolower((string) $record->status) !== 'resolved';
-
-                        return $isOverdue ? 'danger' : 'secondary';
-                    })
-                    ->sortable()
-                    ->toggleable(),
-            ])
-            ->defaultSort('target_date', 'asc')
-            ->filters([
-                //
-            ])
-            ->headerActions([
-                //
-            ])
-            ->recordUrl(fn ($record) => ViewObservation::getUrl(['record' => $record->id])
-            )
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    //
+                Split::make([
+                    ImageColumn::make('capture_concern')
+                        ->label('')
+                        ->square()
+                        ->size(84)
+                        ->defaultImageUrl(asset('favicon.svg'))
+                        ->extraImgAttributes(['class' => 'object-cover rounded-lg border border-gray-200 dark:border-gray-700'])
+                        ->grow(false),
+                    Stack::make([
+                        TextColumn::make('area')
+                            ->label('')
+                            ->weight(FontWeight::Bold)
+                            ->placeholder('Untitled audit area')
+                            ->wrap(),
+                        TextColumn::make('status')
+                            ->label('')
+                            ->badge()
+                            ->formatStateUsing(fn (string $state): string => ucwords(strtolower($state)))
+                            ->color(fn (string $state) => match (strtolower($state)) {
+                                'pending' => 'gray',
+                                'ongoing' => 'warning',
+                                'for further discussion' => 'info',
+                                'resolved' => 'success',
+                                default => 'secondary',
+                            }),
+                        TextColumn::make('timeline_meta')
+                            ->label('')
+                            ->state(fn (Observation $record): string => sprintf(
+                                '%s / %s',
+                                $record->dealer?->name ?? 'No dealer',
+                                $record->pic?->department?->name ?? 'No department'
+                            ))
+                            ->color('gray'),
+                        TextColumn::make('timeline_lead')
+                            ->label('')
+                            ->state(fn (Observation $record): string => 'Lead Time: '.($this->resolveLeadTimeByStatus($record) ?? 'No lead time'))
+                            ->color('gray'),
+                        TextColumn::make('auditor.name')
+                            ->label('')
+                            ->prefix('Auditor: ')
+                            ->color('gray')
+                            ->placeholder('No auditor'),
+                    ]),
                 ]),
-            ]);
+            ])
+            ->recordActions([
+                ViewAction::make()
+                    ->tooltip('View details'),
+            ])
+            ->paginated([5])
+            ->asDoubleSidedTimeline();
+    }
+
+    protected function resolveLeadTimeByStatus(Observation $record): ?string
+    {
+        $attribute = match (strtolower((string) $record->status)) {
+            'pending' => 'date_pending',
+            'ongoing' => 'date_ongoing',
+            'for further discussion' => 'date_for_further_discussion',
+            'resolved' => 'date_resolved',
+            default => null,
+        };
+
+        if (! $attribute) {
+            return null;
+        }
+
+        return $record->formatLeadTime($attribute);
     }
 
     protected function getWidgetScopedObservationQuery(): Builder

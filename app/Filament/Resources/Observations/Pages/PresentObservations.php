@@ -97,8 +97,7 @@ class PresentObservations extends Page
                     ->label('Dealer')
                     ->placeholder('All dealers')
                     ->options(fn (): array => $this->getDealerOptions()->all())
-                    ->searchable()
-                    ->native(false)
+                    ->native()
                     ->afterStateUpdated(function (): void {
                         $this->resetSlide();
                     }),
@@ -107,8 +106,7 @@ class PresentObservations extends Page
                     ->label('Department')
                     ->placeholder('All departments')
                     ->options(fn (): array => $this->getDepartmentOptions()->all())
-                    ->searchable()
-                    ->native(false)
+                    ->native()
                     ->afterStateUpdated(function (): void {
                         $this->resetSlide();
                     }),
@@ -117,21 +115,21 @@ class PresentObservations extends Page
                     ->label('Status')
                     ->placeholder('All statuses')
                     ->options($this->getStatusOptions())
-                    ->native(false)
+                    ->native()
                     ->afterStateUpdated(function (): void {
                         $this->resetSlide();
                     }),
 
                 DatePicker::make('capturedFrom')
                     ->label('Captured from')
-                    ->native(false)
+                    ->native()
                     ->afterStateUpdated(function (): void {
                         $this->resetSlide();
                     }),
 
                 DatePicker::make('capturedUntil')
                     ->label('Captured until')
-                    ->native(false)
+                    ->native()
                     ->afterStateUpdated(function (): void {
                         $this->resetSlide();
                     }),

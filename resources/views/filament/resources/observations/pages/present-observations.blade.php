@@ -23,7 +23,7 @@
         x-on:keydown.window.arrow-left="$wire.previousSlide()"
         x-on:keydown.window.arrow-right="$wire.nextSlide()"
         x-ref="stage"
-        class="presentation-stage relative min-h-[calc(100vh-12rem)] overflow-hidden bg-white text-gray-950 dark:bg-gray-950 dark:text-white"
+        class="presentation-stage relative min-h-[calc(100vh-12rem)] overflow-hidden bg-white p-4 text-gray-950 dark:bg-gray-950 dark:text-white sm:p-6"
     >
         <style>
             .presentation-stage > :not(style):not(.presentation-watermark) {
@@ -48,9 +48,10 @@
                 opacity: 0.1;
             }
 
-            .presentation-watermark svg {
+            .presentation-watermark img {
                 width: min(72rem, 86vw);
                 max-height: 70vh;
+                object-fit: contain;
             }
 
             .presentation-stage:fullscreen .presentation-filters {
@@ -63,21 +64,7 @@
         </style>
 
         <div class="presentation-watermark" aria-hidden="true">
-            <svg viewBox="0 0 920 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="460" cy="116" rx="138" ry="72" stroke="currentColor" stroke-width="18" />
-                <ellipse cx="460" cy="116" rx="50" ry="72" stroke="currentColor" stroke-width="18" />
-                <ellipse cx="460" cy="116" rx="138" ry="36" stroke="currentColor" stroke-width="18" />
-                <text
-                    x="460"
-                    y="260"
-                    fill="currentColor"
-                    font-family="Arial, Helvetica, sans-serif"
-                    font-size="96"
-                    font-weight="800"
-                    letter-spacing="10"
-                    text-anchor="middle"
-                >TOYOTA</text>
-            </svg>
+            <img src="{{ asset('logo/toyota.png') }}" alt="Toyota logo watermark" />
         </div>
 
         <div class="presentation-filters border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/80">

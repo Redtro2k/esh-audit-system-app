@@ -246,4 +246,5 @@ class ObservationInfolist
             })
             ->color('secondary');
     }
+
 }

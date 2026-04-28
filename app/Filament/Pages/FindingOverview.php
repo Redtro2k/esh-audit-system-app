@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\LatestOngoing;
 use App\Livewire\AnalyticsOverview;
 use App\Livewire\PerDepartment;
 use App\Livewire\PerStatus;
@@ -53,6 +54,7 @@ class FindingOverview extends Page
             PerDepartment::class,
             PerStatus::class,
             SummaryAnalytics::class,
+            LatestOngoing::class,
         ];
     }
 }
