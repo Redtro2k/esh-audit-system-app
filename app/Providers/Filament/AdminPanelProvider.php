@@ -89,7 +89,7 @@ class AdminPanelProvider extends PanelProvider
                 MobileBottomNav::make(),
                 GlobalSearchModalPlugin::make(),
                 EasyFooterPlugin::make()
-                    ->withLogo(Storage::url('Images/Logo_desktop.png'))
+                    ->withLogo(Storage::disk('public')->url('Images/Logo_desktop.png'))
                     ->withLinks([
                         ['title' => 'About', 'url' => 'https://example.com/about'],
                         ['title' => 'CGV', 'url' => 'https://example.com/cgv'],

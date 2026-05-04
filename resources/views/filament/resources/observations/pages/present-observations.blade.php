@@ -64,7 +64,7 @@
         </style>
 
         <div class="presentation-watermark" aria-hidden="true">
-            <img src="{{ asset('logo/toyota.png') }}" alt="Toyota logo watermark" />
+            <img src="{{ Storage::url('logo/toyota.png') }}" alt="Toyota logo watermark" />
         </div>
 
         <div class="presentation-filters border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/80">
@@ -207,10 +207,10 @@
                                 <dt class="font-medium text-gray-500 dark:text-gray-400">PIC</dt>
                                 <dd class="mt-1 font-semibold text-gray-950 dark:text-white">{{ $observation->pic?->name ?? 'No PIC' }}</dd>
                             </div>
-                            <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
-                                <dt class="font-medium text-gray-500 dark:text-gray-400">Auditor</dt>
-                                <dd class="mt-1 font-semibold text-gray-950 dark:text-white">{{ $observation->auditor?->name ?? 'No auditor' }}</dd>
-                            </div>
+                            <!--<div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">-->
+                            <!--    <dt class="font-medium text-gray-500 dark:text-gray-400">Auditor</dt>-->
+                            <!--    <dd class="mt-1 font-semibold text-gray-950 dark:text-white">{{ $observation->auditor?->name ?? 'No auditor' }}</dd>-->
+                            <!--</div>-->
                             <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
                                 <dt class="font-medium text-gray-500 dark:text-gray-400">Category</dt>
                                 <dd class="mt-1 font-semibold text-gray-950 dark:text-white">{{ $observation->concernType?->name ?? 'No category' }}</dd>
