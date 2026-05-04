@@ -8,7 +8,6 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Leandrocfe\FilamentApexCharts\Widgets\ApexChartWidget;
 
-
 class PerStatus extends ApexChartWidget
 {
     use InteractsWithPageFilters;
@@ -23,6 +22,7 @@ class PerStatus extends ApexChartWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
         $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         $statusOrder = ['pending', 'ongoing', 'for further discussion', 'resolved'];
@@ -32,11 +32,12 @@ class PerStatus extends ApexChartWidget
             [
                 'startDate' => $startDate,
                 'endDate' => $endDate,
+                'dealerId' => $dealerId,
                 'userId' => auth()->id(),
                 'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(10),
-            fn () => AnalyticsObservationScope::query()
+            fn () => AnalyticsObservationScope::query($dealerId)
                 ->when($startDate, fn (Builder $query) => $query->whereDate('observations.created_at', '>=', $startDate))
                 ->when($endDate, fn (Builder $query) => $query->whereDate('observations.created_at', '<=', $endDate))
                 ->selectRaw('status, count(*) as total')

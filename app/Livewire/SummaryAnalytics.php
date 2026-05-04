@@ -17,7 +17,7 @@ class SummaryAnalytics extends Widget
 
     public ?string $paragraph = null;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected string $view = 'livewire.summary-analytics';
 
@@ -35,6 +35,7 @@ class SummaryAnalytics extends Widget
     {
         $startDate = Carbon::parse($this->startDate);
         $endDate = Carbon::parse($this->endDate);
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
         $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         $this->paragraph = ObservationAnalyticsCache::remember(
@@ -42,15 +43,16 @@ class SummaryAnalytics extends Widget
             [
                 'startDate' => $this->startDate,
                 'endDate' => $this->endDate,
+                'dealerId' => $dealerId,
                 'userId' => auth()->id(),
                 'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(15),
-            function () use ($startDate, $endDate): string {
+            function () use ($startDate, $endDate, $dealerId): string {
                 $previousStartDate = $startDate->copy()->subMonthNoOverflow();
                 $previousEndDate = $endDate->copy()->subMonthNoOverflow();
 
-                $observation = AnalyticsObservationScope::query()
+                $observation = AnalyticsObservationScope::query($dealerId)
                     ->when($this->startDate, fn (Builder $query) => $query->whereDate('created_at', '>=', $this->startDate))
                     ->when($this->endDate, fn (Builder $query) => $query->whereDate('created_at', '<=', $this->endDate))
                     ->with('department')
@@ -59,7 +61,7 @@ class SummaryAnalytics extends Widget
                 $currentTotal = $observation->count();
                 $currentPending = $observation->where('status', 'pending')->count();
 
-                $previousMonth = AnalyticsObservationScope::query()
+                $previousMonth = AnalyticsObservationScope::query($dealerId)
                     ->whereDate('created_at', '>=', $previousStartDate->toDateString())
                     ->whereDate('created_at', '<=', $previousEndDate->toDateString())
                     ->get();
@@ -106,7 +108,7 @@ class SummaryAnalytics extends Widget
                 ];
 
                 return $this->generateTextSummary(
-                    "You are an internal audit analytics assistant.
+                    'You are an internal audit analytics assistant.
 
                     Analyze the following JSON data and generate a professional executive summary.
 
@@ -119,7 +121,7 @@ class SummaryAnalytics extends Widget
                     - Use a formal and objective tone.
 
                     JSON Data:
-                    " . json_encode($analytics, JSON_PRETTY_PRINT)
+                    '.json_encode($analytics, JSON_PRETTY_PRINT)
                 );
             }
         );
@@ -127,17 +129,19 @@ class SummaryAnalytics extends Widget
 
     public function mostOfConcernFindings()
     {
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
         $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         $this->paragraph = ObservationAnalyticsCache::remember(
             'concern-findings-text',
             [
+                'dealerId' => $dealerId,
                 'userId' => auth()->id(),
                 'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(15),
-            function (): string {
-                $observations = AnalyticsObservationScope::query()
+            function () use ($dealerId): string {
+                $observations = AnalyticsObservationScope::query($dealerId)
                     ->selectRaw('concern_type, count(*) as concern_count')
                     ->whereHas('concernType', fn (Builder $query) => $query->whereNull('parent_id'))
                     ->groupBy('concern_type')
@@ -150,7 +154,7 @@ class SummaryAnalytics extends Widget
                     ]);
 
                 return $this->generateTextSummary(
-                    "You are an audit analytics assistant.
+                    'You are an audit analytics assistant.
                     Analyze the parent-level concern distribution and identify which concern domains represent the highest operational exposure.
                     Use only the data provided. Do not assume missing values.
 
@@ -158,7 +162,7 @@ class SummaryAnalytics extends Widget
                     - give me a recommendation on which concern domain should be prioritized for risk mitigation based on the distribution.
                     - Keep the response under 150 words.
                     - Use a formal and objective tone.
-                    Json Data: " . json_encode($observations->toArray(), JSON_PRETTY_PRINT)
+                    Json Data: '.json_encode($observations->toArray(), JSON_PRETTY_PRINT)
                 );
             }
         );
@@ -166,17 +170,19 @@ class SummaryAnalytics extends Widget
 
     public function domainExposureAnalysis()
     {
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
         $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         $this->paragraph = ObservationAnalyticsCache::remember(
             'domain-exposure-text',
             [
+                'dealerId' => $dealerId,
                 'userId' => auth()->id(),
                 'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(15),
-            function (): string {
-                $observations = AnalyticsObservationScope::query()
+            function () use ($dealerId): string {
+                $observations = AnalyticsObservationScope::query($dealerId)
                     ->whereHas('concernType', fn (Builder $query) => $query->whereNull('parent_id'))
                     ->with('concernType')
                     ->get()
@@ -221,7 +227,7 @@ class SummaryAnalytics extends Widget
                         2. Highest Operational Exposure
                         3. Executive Summary (5 sentences max)
 
-                        JSON Data:" . json_encode($observations->toArray(), JSON_PRETTY_PRINT)
+                        JSON Data:".json_encode($observations->toArray(), JSON_PRETTY_PRINT)
                 );
             }
         );
@@ -237,7 +243,7 @@ class SummaryAnalytics extends Widget
 
             return $response->text;
         } catch (\Throwable $e) {
-            return 'Failed to generate summary: ' . $e->getMessage();
+            return 'Failed to generate summary: '.$e->getMessage();
         }
     }
 

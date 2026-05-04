@@ -113,7 +113,7 @@ class PresentObservations extends Page
 
                 Select::make('status')
                     ->label('Status')
-                    ->placeholder('All statuses')
+                    ->placeholder('All Status')
                     ->options($this->getStatusOptions())
                     ->native()
                     ->afterStateUpdated(function (): void {

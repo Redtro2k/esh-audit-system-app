@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Enum\NavigationGroup;
 use App\Support\AnalyticsObservationScope;
 use App\Support\ObservationAnalyticsCache;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -9,7 +10,6 @@ use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
-use App\Enum\NavigationGroup;
 
 class AnalyticsOverview extends StatsOverviewWidget
 {
@@ -34,14 +34,14 @@ class AnalyticsOverview extends StatsOverviewWidget
         return [
             Stat::make(
                 'Open Findings',
-               $counts['open']
+                $counts['open']
             )
                 ->description('All unresolved items')
                 ->color('primary')
                 ->icon('heroicon-m-flag'),
             Stat::make(
                 'Pending Review',
-               $counts['pending']
+                $counts['pending']
             )
                 ->description('Awaiting triage or action')
                 ->color('warning')
@@ -67,6 +67,7 @@ class AnalyticsOverview extends StatsOverviewWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
         $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         return ObservationAnalyticsCache::remember(
@@ -74,6 +75,7 @@ class AnalyticsOverview extends StatsOverviewWidget
             [
                 'startDate' => $startDate,
                 'endDate' => $endDate,
+                'dealerId' => $dealerId,
                 'today' => now()->toDateString(),
                 'userId' => auth()->id(),
                 'dealerIds' => $dealerIds->all(),
@@ -103,8 +105,9 @@ class AnalyticsOverview extends StatsOverviewWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
 
-        return AnalyticsObservationScope::query()
+        return AnalyticsObservationScope::query($dealerId)
             ->when($startDate, fn (Builder $query) => $query->whereDate('created_at', '>=', $startDate))
             ->when($endDate, fn (Builder $query) => $query->whereDate('created_at', '<=', $endDate));
     }

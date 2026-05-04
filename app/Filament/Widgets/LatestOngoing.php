@@ -2,8 +2,8 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Resources\Observations\ObservationResource;
 use App\Models\Observation;
+use App\Support\AnalyticsObservationScope;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\ImageColumn;
@@ -15,7 +15,6 @@ use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 
 class LatestOngoing extends TableWidget
 {
@@ -38,9 +37,11 @@ class LatestOngoing extends TableWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? now()->startOfMonth();
         $endDate = $this->pageFilters['endDate'] ?? now()->endOfMonth();
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
 
         return $table
-            ->query(fn (): Builder => $this->getWidgetScopedObservationQuery()
+            ->query(fn (): Builder => AnalyticsObservationScope::query($dealerId)
+                ->with(['dealer', 'pic.department', 'auditor'])
                 ->whereIn('status', ['pending', 'ongoing', 'for further discussion'])
                 ->where(function (Builder $query) use ($startDate, $endDate) {
                     $query
@@ -127,26 +128,5 @@ class LatestOngoing extends TableWidget
         }
 
         return $record->formatLeadTime($attribute);
-    }
-
-    protected function getWidgetScopedObservationQuery(): Builder
-    {
-        $query = ObservationResource::getScopedObservationQuery();
-        $user = auth()->user();
-
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        if ($user->hasRole('developer')) {
-            return $query;
-        }
-
-        return ObservationResource::applyObservationVisibility($query, $user);
-    }
-
-    protected function getVisibleDealerIds(): Collection
-    {
-        return auth()->user()?->dealers()->pluck('dealers.id') ?? collect();
     }
 }

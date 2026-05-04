@@ -22,6 +22,7 @@ class PerDepartment extends ApexChartWidget
     {
         $startDate = $this->pageFilters['startDate'] ?? null;
         $endDate = $this->pageFilters['endDate'] ?? null;
+        $dealerId = $this->pageFilters['dealerId'] ?? null;
         $dealerIds = AnalyticsObservationScope::visibleDealerIds();
 
         $counts = ObservationAnalyticsCache::remember(
@@ -29,11 +30,12 @@ class PerDepartment extends ApexChartWidget
             [
                 'startDate' => $startDate,
                 'endDate' => $endDate,
+                'dealerId' => $dealerId,
                 'userId' => auth()->id(),
                 'dealerIds' => $dealerIds->all(),
             ],
             now()->addMinutes(10),
-            fn () => AnalyticsObservationScope::query()
+            fn () => AnalyticsObservationScope::query($dealerId)
                 ->selectRaw('departments.name as department, count(*) as total')
                 ->when($startDate, fn (Builder $query) => $query->whereDate('observations.created_at', '>=', $startDate))
                 ->when($endDate, fn (Builder $query) => $query->whereDate('observations.created_at', '<=', $endDate))
