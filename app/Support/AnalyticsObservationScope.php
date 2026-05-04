@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Filament\Resources\Observations\ObservationResource;
 use App\Models\Dealer;
 use App\Models\Observation;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +26,13 @@ class AnalyticsObservationScope
                 return $query->whereRaw('1 = 0');
             }
 
-            return $query->where('dealer_id', $selectedDealerId);
+            $query->where('dealer_id', $selectedDealerId);
+
+            if ($user->hasAnyRole(['developer', 'gm'])) {
+                return $query;
+            }
+
+            return ObservationResource::applyObservationVisibility($query, $user);
         }
 
         if ($user->hasAnyRole(['developer', 'gm'])) {
@@ -36,7 +43,10 @@ class AnalyticsObservationScope
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->whereIn('dealer_id', $dealerIds->all());
+        return ObservationResource::applyObservationVisibility(
+            $query->whereIn('dealer_id', $dealerIds->all()),
+            $user,
+        );
     }
 
     public static function visibleDealerIds(): Collection

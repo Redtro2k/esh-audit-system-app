@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,7 +33,7 @@ class Dealer extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasAnyRole(['developer', 'remediator', 'gm'])) {
+        if ($user->hasAnyRole(['developer', 'gm'])) {
             return $query;
         }
 

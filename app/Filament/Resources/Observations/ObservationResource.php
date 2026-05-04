@@ -110,28 +110,35 @@ class ObservationResource extends Resource
     protected static function applyRemediatorVisibility(Builder $query, User $user, bool $includeSubscriptions = false): Builder
     {
         $subscriptionsTable = (new CommentSubscription)->getTable();
+        $dealerIds = $user->dealers()->pluck('dealers.id');
 
-        return $query->where(function (Builder $scoped) use ($user, $includeSubscriptions, $subscriptionsTable) {
-            $scoped
-                ->where('pic_id', $user->getKey())
-                ->orWhereHas('pic', fn (Builder $picQuery) => $picQuery
-                    ->where('department_id', $user->department_id)
-                    ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'representative')));
+        if ($dealerIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
 
-            if (! $includeSubscriptions) {
-                return;
-            }
+        return $query
+            ->whereIn('dealer_id', $dealerIds)
+            ->where(function (Builder $scoped) use ($user, $includeSubscriptions, $subscriptionsTable) {
+                $scoped
+                    ->where('pic_id', $user->getKey())
+                    ->orWhereHas('pic', fn (Builder $picQuery) => $picQuery
+                        ->where('department_id', $user->department_id)
+                        ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'representative')));
 
-            $scoped->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
-                $subQuery
-                    ->selectRaw('1')
-                    ->from($subscriptionsTable)
-                    ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
-                    ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
-                    ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
-                    ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
+                if (! $includeSubscriptions) {
+                    return;
+                }
+
+                $scoped->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
+                    $subQuery
+                        ->selectRaw('1')
+                        ->from($subscriptionsTable)
+                        ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
+                        ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
+                        ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
+                        ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
+                });
             });
-        });
     }
 
     public static function form(Schema $schema): Schema
