@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\Observations\ObservationResource;
 use App\Models\Observation;
 use App\Support\AnalyticsObservationScope;
 use Filament\Actions\ViewAction;
@@ -107,6 +108,7 @@ class LatestOngoing extends TableWidget
             ])
             ->recordActions([
                 ViewAction::make()
+                    ->url(fn (Observation $record): string => ObservationResource::getUrl('view', ['record' => $record]))
                     ->tooltip('View details'),
             ])
             ->paginated([5])
