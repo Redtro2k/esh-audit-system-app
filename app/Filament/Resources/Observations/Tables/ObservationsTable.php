@@ -240,26 +240,29 @@ class ObservationsTable
                     ->label('Target Date')
                     ->icon(LucideIcon::ClipboardPen)
                     ->iconButton()
-                    ->tooltip('Set target date')
-                    ->hidden(fn ($record) => ! auth()->user()->hasRole('auditor')
-                        || filled($record->target_date)
+                    ->tooltip('Set or update target date')
+                    ->authorize(auth()->user()?->hasAnyRole(['auditor', 'contributor']) ?? false)
+                    ->hidden(fn ($record) => ! auth()->user()->hasAnyRole(['auditor', 'contributor'])
                         || strtolower((string) $record->status) === 'resolved')
-                    ->modalHeading('Set target date')
-                    ->modalDescription('Add the expected completion date for this observation.')
+                    ->modalHeading('Manage target date')
+                    ->modalDescription('Target date is optional. Set it now, update it later, or clear it.')
                     ->form([
                         DateTimePicker::make('target_date')
                             ->label('Target Date')
                             ->placeholder('Select target date and time')
                             ->native(false)
-                            ->required(),
+                            ->nullable(),
+                    ])
+                    ->fillForm(fn (Observation $record): array => [
+                        'target_date' => $record->target_date,
                     ])
                     ->action(function (array $data, Observation $record): void {
                         $record->update([
-                            'target_date' => $data['target_date'],
+                            'target_date' => $data['target_date'] ?? null,
                         ]);
 
                         Notification::make()
-                            ->title('Target date saved')
+                            ->title('Target date updated')
                             ->success()
                             ->send();
                     }),

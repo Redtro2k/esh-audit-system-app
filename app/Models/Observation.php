@@ -18,7 +18,6 @@ class Observation extends Model implements Commentable
     protected $guarded = [];
 
     protected $casts = [
-        'concern' => 'array',
         'capture_concern' => 'array',
         'capture_solved' => 'array',
         'target_date' => 'datetime',

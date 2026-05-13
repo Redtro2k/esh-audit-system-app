@@ -146,7 +146,9 @@ class ObservationForm
                                             ->columnSpanFull()
                                             ->label('Concern / Remarks')
                                             ->helperText('Describe the issue clearly, including what was observed and why it matters.')
-                                            ->placeholder('Describe the concern'),
+                                            ->placeholder('Describe the concern')
+                                            ->required()
+                                            ->maxLength(65535),
                                     ]),
                                 Grid::make()
                                     ->schema([
@@ -161,8 +163,8 @@ class ObservationForm
                                         DateTimePicker::make('target_date')
                                             ->label('Target Date')
                                             ->placeholder('Select target date and time')
-                                            ->helperText('Auditor can set the expected completion date for this observation.')
-                                            ->hidden(fn (): bool => ! auth()->user()->hasRole('auditor'))
+                                            ->helperText('Optional. Authorized auditor or contributor can set the expected completion date for this observation.')
+                                            ->hidden(fn (): bool => ! auth()->user()->hasAnyRole(['auditor', 'contributor']))
                                             ->nullable()
                                             ->native(false),
                                         Radio::make('status')
