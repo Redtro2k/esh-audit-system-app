@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6c166a837f21a748c34c51e43ebb4d09",
+    "content-hash": "a41a2ea872a3faf4d2050bfd9551a7cb",
     "packages": [
         {
             "name": "al-saloul/filament-image-gallery",
@@ -9127,6 +9127,62 @@
             "time": "2025-12-02T11:56:42+00:00"
         },
         {
+            "name": "tinusg/filament-hover-image-column",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/tinusg/filament-hover-image-column.git",
+                "reference": "dab7077bf2e89b4b50dd466fc12618107ebbbe06"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/tinusg/filament-hover-image-column/zipball/dab7077bf2e89b4b50dd466fc12618107ebbbe06",
+                "reference": "dab7077bf2e89b4b50dd466fc12618107ebbbe06",
+                "shasum": ""
+            },
+            "require": {
+                "filament/tables": "^5.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "orchestra/testbench": "^11.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "TinusG\\FilamentHoverImageColumn\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Tinus G",
+                    "homepage": "https://github.com/tinusg"
+                }
+            ],
+            "description": "A Filament table column that shows a larger image preview on hover",
+            "homepage": "https://github.com/tinusg/filament-hover-image-column",
+            "keywords": [
+                "column",
+                "filament",
+                "hover",
+                "image",
+                "laravel",
+                "preview"
+            ],
+            "support": {
+                "issues": "https://github.com/tinusg/filament-hover-image-column/issues",
+                "source": "https://github.com/tinusg/filament-hover-image-column/tree/v1.0.0"
+            },
+            "time": "2026-04-16T11:19:02+00:00"
+        },
+        {
             "name": "ueberdosis/tiptap-php",
             "version": "2.1.0",
             "source": {
@@ -12696,5 +12752,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

@@ -13,6 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
+use Illuminate\Support\HtmlString;
 use Kirschbaum\Commentions\Filament\Infolists\Components\CommentsEntry;
 
 class ObservationInfolist
@@ -62,6 +63,8 @@ class ObservationInfolist
                             ->color('primary'),
                         TextEntry::make('concern')
                             ->label('Concern / Remarks')
+                            ->formatStateUsing(fn (?string $state): HtmlString => self::formatMultilineText($state))
+                            ->html()
                             ->size(TextSize::Large)
                             ->weight(FontWeight::Bold)
                             ->color('primary'),
@@ -124,6 +127,7 @@ class ObservationInfolist
                 TextEntry::make('remarks')
                     ->placeholder('No Remarks')
                     ->label('Remarks')
+                    ->formatStateUsing(fn (?string $state): HtmlString => self::formatMultilineText($state))
                     ->html(),
                 TextEntry::make('counter_measure')
                     ->placeholder('No Counter Measure')
@@ -245,6 +249,20 @@ class ObservationInfolist
                 return $leadTimes->implode(' | ');
             })
             ->color('secondary');
+    }
+
+    protected static function formatMultilineText(?string $text): HtmlString
+    {
+        if (blank($text)) {
+            return new HtmlString('');
+        }
+
+        $normalized = preg_replace("/\r\n|\r|\n/", "\n", $text);
+        $normalized = str_replace(['\\r\\n', '\\n', '\\r'], "\n", $normalized);
+        $normalized = str_replace('\\/', '/', $normalized);
+        $normalized = trim($normalized ?? '');
+
+        return new HtmlString(nl2br(e($normalized)));
     }
 
 }

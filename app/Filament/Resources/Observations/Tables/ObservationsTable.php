@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Observations\Tables;
 
+use App\Filament\Exports\ObservationExporter;
+use App\Mail\ForFutherDiscussion;
+use App\Mail\SendObservation;
 use App\Models\Observation;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Actions\Action;
@@ -13,7 +16,6 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -21,6 +23,7 @@ use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use TinusG\FilamentHoverImageColumn\HoverImageColumn;
 
 class ObservationsTable
 {
@@ -80,7 +83,8 @@ class ObservationsTable
                     ->limit(24)
                     ->tooltip(fn (?string $state) => $state)
                     ->toggleable(),
-                ImageColumn::make('capture_concern')->label('Concern Proof')->circular()->stacked()
+                HoverImageColumn::make('capture_concern')->label('Concern Proof')->circular()->stacked()
+                    ->previewSize(420)
                     ->imageGallery()
                     ->stacked()
                     ->ring(5)->limit(5)
@@ -229,10 +233,10 @@ class ObservationsTable
                         $observation = Observation::with('pic', 'auditor', 'pic.department')->find($record->id);
                         switch (strtolower($record->status)) {
                             case 'for further discussion':
-                                Mail::to($observation->pic->email)->send(new \App\Mail\ForFutherDiscussion($observation));
+                                Mail::to($observation->pic->email)->send(new ForFutherDiscussion($observation));
                                 break;
                             case 'pending':
-                                Mail::to($observation->pic->email)->send(new \App\Mail\SendObservation($observation));
+                                Mail::to($observation->pic->email)->send(new SendObservation($observation));
                                 break;
                         }
                     }),
@@ -285,7 +289,7 @@ class ObservationsTable
                         ->label('Export')
                         ->icon(LucideIcon::FileSpreadsheet)
                         ->columnMapping(false)
-                        ->exporter(\App\Filament\Exports\ObservationExporter::class),
+                        ->exporter(ObservationExporter::class),
                 ]),
             ]);
     }

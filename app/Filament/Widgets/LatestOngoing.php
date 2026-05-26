@@ -7,7 +7,6 @@ use App\Models\Observation;
 use App\Support\AnalyticsObservationScope;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\FontWeight;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
@@ -16,6 +15,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
+use TinusG\FilamentHoverImageColumn\HoverImageColumn;
 
 class LatestOngoing extends TableWidget
 {
@@ -62,10 +62,11 @@ class LatestOngoing extends TableWidget
             ->emptyStateDescription('Try adjusting the date range or check back later.')
             ->columns([
                 Split::make([
-                    ImageColumn::make('capture_concern')
+                    HoverImageColumn::make('capture_concern')
                         ->label('')
                         ->square()
                         ->size(84)
+                        ->previewSize(420)
                         ->defaultImageUrl(asset('favicon.svg'))
                         ->extraImgAttributes(['class' => 'object-cover rounded-lg border border-gray-200 dark:border-gray-700'])
                         ->grow(false),

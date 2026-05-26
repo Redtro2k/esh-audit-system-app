@@ -6,30 +6,42 @@ use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Filament\Support\Components\Component;
+use Filament\Support\Enums\Width;
 use Illuminate\Validation\ValidationException;
 use SensitiveParameter;
 
 class NewLogin extends BaseLogin
 {
+    protected string $view = 'filament.pages.new-login';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    public function getView(): string
+    {
+        return 'filament.pages.new-login';
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
                 $this->getLoginFormComponent(),
                 $this->getPasswordFormComponent(),
-                $this->getRememberFormComponent()
+                $this->getRememberFormComponent(),
             ]);
     }
+
     public function getLoginFormComponent(): Component
     {
         return TextInput::make('login')
-            ->label('Username or Email')
+            ->label('Username')
             ->required()
             ->autofocus()
             ->autocomplete('username')
-            ->placeholder('Enter your username or email address')
+            ->placeholder('Enter your username')
             ->extraInputAttributes(['tabindex' => 1]);
     }
+
     protected function getCredentialsFromFormData(#[SensitiveParameter] array $data): array
     {
         $login = trim((string) $data['login']);
@@ -43,6 +55,7 @@ class NewLogin extends BaseLogin
             'password' => $data['password'],
         ];
     }
+
     protected function throwFailureValidationException(): never
     {
         throw ValidationException::withMessages([
