@@ -2,11 +2,12 @@
 
 namespace App\Filament\Resources\Observations\Schemas;
 
+use App\Filament\Infolists\Components\HoverImageEntry;
 use App\Models\ConcernCategory;
 use App\Models\Observation;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
-use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -24,8 +25,12 @@ class ObservationInfolist
             ->components([
                 self::auditSection(),
                 self::responseSection(),
-                self::timelineSection(),
-                self::commentsSection(),
+                Grid::make(3)
+                    ->columnSpanFull()
+                    ->schema([
+                        self::commentsSection()->columnSpan(2),
+                        self::timelineSection()->columnSpan(1),
+                    ]),
             ]);
     }
 
@@ -83,12 +88,14 @@ class ObservationInfolist
                     ->size(TextSize::Large)
                     ->weight(FontWeight::Bold)
                     ->badge(),
-                ImageEntry::make('capture_concern')
+                HoverImageEntry::make('capture_concern')
                     ->extraAttributes([
                         'alt' => 'Logo',
                         'loading' => 'lazy',
                     ])
                     ->imageGallery()
+                    ->previewSize(420)
+                    ->defaultImageUrl(asset('favicon.svg'))
                     ->ring(5)
                     ->label('Proof Concern'),
             ]);
@@ -151,13 +158,15 @@ class ObservationInfolist
                     ->weight(FontWeight::Bold)
                     ->color('primary')
                     ->placeholder('No Date Resolved Captured'),
-                ImageEntry::make('capture_solved')
+                HoverImageEntry::make('capture_solved')
                     ->extraAttributes([
                         'alt' => 'Logo',
                         'loading' => 'lazy',
                     ])
                     ->placeholder('No Photo')
                     ->imageGallery()
+                    ->previewSize(420)
+                    ->defaultImageUrl(asset('favicon.svg'))
                     ->ring(5)
                     ->label('Proof Solved'),
             ]);
@@ -168,15 +177,12 @@ class ObservationInfolist
         return Section::make('Timeline')
             ->icon(LucideIcon::ClipboardCheck)
             ->iconColor('primary')
-            ->columnSpanFull()
             ->description('Shows the observation milestone dates together with the lead time from capture.')
-            ->columns(2)
             ->schema([
-                self::timelineEntry('date_captured', 'Date Captured'),
-                self::timelineEntry('date_pending', 'Date Pending', 'date_pending'),
-                self::combinedTimelineEntry(),
-                self::timelineEntry('date_for_further_discussion', 'Date For Further Discussion', 'date_for_further_discussion'),
-                self::timelineEntry('date_resolved', 'Date Resolved', 'date_resolved'),
+                TextEntry::make('timeline_view')
+                    ->hiddenLabel()
+                    ->state(fn (Observation $record): HtmlString => new HtmlString(self::renderTimelineHtml($record)))
+                    ->html(),
             ]);
     }
 
@@ -196,6 +202,80 @@ class ObservationInfolist
                         'class' => 'max-h-96 overflow-y-auto',
                     ]),
             ]);
+    }
+
+    protected static function renderTimelineHtml(Observation $record): string
+    {
+        $events = [
+            [
+                'title' => 'Date Captured',
+                'date' => self::formatTimelineDate($record->date_captured),
+                'lead' => 'Lead Time baseline',
+            ],
+            [
+                'title' => 'Date Pending',
+                'date' => self::formatTimelineDate($record->date_pending),
+                'lead' => 'Lead Time: '.($record->formatLeadTime('date_pending') ?? 'No lead time'),
+            ],
+            [
+                'title' => 'Date Ongoing',
+                'date' => self::formatTimelineDate($record->date_ongoing),
+                'lead' => 'Lead Time: '.($record->formatLeadTime('date_ongoing') ?? 'No lead time'),
+            ],
+            [
+                'title' => 'Date For Further Discussion',
+                'date' => self::formatTimelineDate($record->date_for_further_discussion),
+                'lead' => 'Lead Time: '.($record->formatLeadTime('date_for_further_discussion') ?? 'No lead time'),
+            ],
+            [
+                'title' => 'Counter Measure Date',
+                'date' => self::formatTimelineDate($record->counter_measure_date),
+                'lead' => 'Lead Time: '.($record->formatLeadTime('counter_measure_date') ?? 'No lead time'),
+            ],
+            [
+                'title' => 'Date Resolved',
+                'date' => self::formatTimelineDate($record->date_resolved),
+                'lead' => 'Lead Time: '.($record->formatLeadTime('date_resolved') ?? 'No lead time'),
+            ],
+        ];
+
+        $items = collect($events)
+            ->filter(fn (array $event): bool => $event['date'] !== 'No date')
+            ->values();
+
+        if ($items->isEmpty()) {
+            return '<p class="text-sm text-gray-500 dark:text-gray-400">No timeline milestones yet.</p>';
+        }
+
+        $html = '<ol class="esh-timeline-view">';
+
+        foreach ($items as $item) {
+            $html .= '<li class="esh-timeline-item">';
+            $html .= '<div class="esh-timeline-dot" aria-hidden="true"></div>';
+            $html .= '<div class="esh-timeline-card">';
+            $html .= '<p class="esh-timeline-title">'.e($item['title']).'</p>';
+            $html .= '<p class="esh-timeline-date">'.e($item['date']).'</p>';
+            $html .= '<p class="esh-timeline-lead">'.e($item['lead']).'</p>';
+            $html .= '</div>';
+            $html .= '</li>';
+        }
+
+        $html .= '</ol>';
+
+        return $html;
+    }
+
+    protected static function formatTimelineDate(mixed $value): string
+    {
+        if (! $value) {
+            return 'No date';
+        }
+
+        if ($value instanceof CarbonInterface) {
+            return $value->format('l, F d, Y h:i A');
+        }
+
+        return (string) $value;
     }
 
     protected static function timelineEntry(string $name, string $label, ?string $leadTimeAttribute = null): TextEntry
