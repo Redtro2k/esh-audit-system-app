@@ -408,6 +408,55 @@
     background: #f2f3f5;
 }
 
+.dark .fi-simple-layout:has(.esh-login-page) {
+    background:
+        linear-gradient(135deg, rgba(235, 10, 30, 0.14), transparent 36%),
+        radial-gradient(circle at 80% 18%, rgba(148, 163, 184, 0.12), transparent 28%),
+        repeating-linear-gradient(135deg, rgba(148, 163, 184, 0.07) 0 1px, transparent 1px 18px),
+        #0b0e12;
+}
+
+.dark .esh-login-page {
+    color: #e5e7eb;
+}
+
+.dark .esh-login-shell {
+    border-color: rgba(148, 163, 184, 0.2);
+    background: #0f1318;
+    box-shadow: 0 30px 70px rgba(2, 6, 23, 0.65);
+}
+
+.dark .esh-login-panel {
+    background:
+        linear-gradient(180deg, rgba(235, 10, 30, 0.12), transparent 25%),
+        #0f1318;
+}
+
+.dark .esh-login-form-card .fi-fo-field-wrp-label label,
+.dark .esh-login-form-card .fi-checkbox-input + span {
+    color: #e5e7eb;
+}
+
+.dark .esh-login-form-card .fi-input-wrp {
+    border-color: rgba(148, 163, 184, 0.28);
+    background: #111827;
+    box-shadow:
+        inset 0 0 0 1px rgba(148, 163, 184, 0.15),
+        0 1px 0 rgba(2, 6, 23, 0.6);
+}
+
+.dark .esh-login-form-card .fi-input {
+    color: #f9fafb;
+}
+
+.dark .esh-login-panel-footer {
+    color: #cbd5e1;
+}
+
+.dark .esh-login-panel-footer span {
+    background: #1f2937;
+}
+
 @media (max-width: 920px) {
     .fi-simple-main-ctn:has(.esh-login-page) {
         padding: 18px;

@@ -5,19 +5,6 @@
 <section class="esh-login-page">
     <div class="esh-login-shell" aria-label="ESH Safety Audit login">
         <aside class="esh-login-visual" aria-label="Safety audit overview">
-            <div class="esh-login-brand">
-                <span class="esh-login-brand-mark" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" role="img">
-                        <path d="M12 2.75 19 5.4v5.15c0 4.32-2.76 8.18-7 9.82-4.24-1.64-7-5.5-7-9.82V5.4l7-2.65Z" />
-                        <path d="m8.65 11.7 2.15 2.15 4.75-5.05" />
-                    </svg>
-                </span>
-                <div>
-                    <p>ESH AUDIT</p>
-                    <span>Safety Audit Portal</span>
-                </div>
-            </div>
-
             <div class="esh-login-hero">
                 <span class="esh-login-kicker">HRAD System</span>
                 <p>

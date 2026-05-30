@@ -83,11 +83,13 @@ class ObservationsTable
                     ->limit(24)
                     ->tooltip(fn (?string $state) => $state)
                     ->toggleable(),
-                HoverImageColumn::make('capture_concern')->label('Concern Proof')->circular()->stacked()
+                HoverImageColumn::make('capture_concern')
+                    ->label('Concern Proof')
+                    ->square()
+                    ->size(52)
                     ->previewSize(420)
-                    ->imageGallery()
-                    ->stacked()
-                    ->ring(5)->limit(5)
+                    ->defaultImageUrl(asset('favicon.svg'))
+                    ->extraImgAttributes(['class' => 'object-cover rounded-lg border border-gray-200 dark:border-gray-700'])
                     ->toggleable(),
                 TextColumn::make('target_date')
                     ->label('Target Date')
