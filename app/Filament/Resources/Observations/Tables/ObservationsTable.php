@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Observations\Tables;
 
 use App\Filament\Exports\ObservationExporter;
+use App\Filament\Tables\Columns\HoverImageColumn;
 use App\Mail\ForFutherDiscussion;
 use App\Mail\SendObservation;
 use App\Models\Observation;
@@ -23,7 +24,6 @@ use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
-use TinusG\FilamentHoverImageColumn\HoverImageColumn;
 
 class ObservationsTable
 {
@@ -85,7 +85,10 @@ class ObservationsTable
                     ->toggleable(),
                 HoverImageColumn::make('capture_concern')
                     ->label('Concern Proof')
-                    ->square()
+                    ->stacked()
+                    ->limit(3)
+                    ->ring(2)
+                    ->circular()
                     ->size(52)
                     ->previewSize(420)
                     ->defaultImageUrl(asset('favicon.svg'))

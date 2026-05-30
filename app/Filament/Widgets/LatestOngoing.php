@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\Observations\ObservationResource;
+use App\Filament\Tables\Columns\HoverImageColumn;
 use App\Models\Observation;
 use App\Support\AnalyticsObservationScope;
 use Filament\Actions\ViewAction;
@@ -15,7 +16,6 @@ use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
-use TinusG\FilamentHoverImageColumn\HoverImageColumn;
 
 class LatestOngoing extends TableWidget
 {
