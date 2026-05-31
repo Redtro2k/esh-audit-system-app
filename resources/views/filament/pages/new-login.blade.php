@@ -55,6 +55,19 @@
         </aside>
 
         <main class="esh-login-panel" aria-label="Sign in form">
+            <div class="esh-login-logo" aria-label="ESH Audit">
+                <img
+                    class="esh-login-logo-light"
+                    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url('logo/esh-logo-black.png') }}"
+                    alt="ESH Audit logo"
+                />
+                <img
+                    class="esh-login-logo-dark"
+                    src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url('logo/esh-logo-white.png') }}"
+                    alt="ESH Audit logo"
+                />
+            </div>
+
             <div class="esh-login-form-card">
                 {{ $this->content }}
             </div>

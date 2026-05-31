@@ -38,7 +38,8 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->brandName('ESH AUDIT')
-            ->brandLogo(asset('logo/logo-esh.png'))
+            ->brandLogo(Storage::disk('public')->url('logo/esh-logo-black.png'))
+            ->darkModeBrandLogo(Storage::disk('public')->url('logo/esh-logo-white.png'))
             ->brandLogoHeight('4.5rem')
             ->default()
             ->id('admin')

@@ -276,6 +276,21 @@
         #ffffff;
 }
 
+.esh-login-logo {
+    display: flex;
+    justify-content: center;
+}
+
+.esh-login-logo img {
+    width: min(260px, 72%);
+    height: auto;
+    object-fit: contain;
+}
+
+.esh-login-logo-dark {
+    display: none;
+}
+
 .esh-login-panel-header {
     display: grid;
     gap: 24px;
@@ -430,6 +445,14 @@
     background:
         linear-gradient(180deg, rgba(235, 10, 30, 0.12), transparent 25%),
         #0f1318;
+}
+
+.dark .esh-login-logo-light {
+    display: none;
+}
+
+.dark .esh-login-logo-dark {
+    display: block;
 }
 
 .dark .esh-login-form-card .fi-fo-field-wrp-label label,
@@ -633,6 +656,10 @@
     .esh-login-panel {
         gap: 22px;
         padding: 28px 22px 32px;
+    }
+
+    .esh-login-logo img {
+        width: min(220px, 78%);
     }
 
     .esh-login-panel-footer {
