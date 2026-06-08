@@ -41,6 +41,47 @@ class ObservationResource extends Resource
         return auth()->user()?->hasRole('developer') ?? false;
     }
 
+    public static function canEdit($record): bool
+    {
+        return static::canUpdateObservation($record);
+    }
+
+    public static function canUpdateObservation(?Observation $record): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || ! $record) {
+            return false;
+        }
+
+        if ($user->hasRole('gm') || strtolower((string) $record->status) === 'resolved') {
+            return false;
+        }
+
+        if ($user->hasRole('auditor')) {
+            return true;
+        }
+
+        if ($user->hasRole('contributor')) {
+            return (int) $record->auditor_id === (int) $user->getKey();
+        }
+
+        if ($user->hasRole('representative')) {
+            return (int) $record->pic_id === (int) $user->getKey();
+        }
+
+        if ($user->hasRole('remediator')) {
+            return (int) $record->pic_id === (int) $user->getKey()
+                || (
+                    (int) $record->pic?->department_id === (int) $user->department_id
+                    && $record->pic?->hasRole('representative')
+                    && $user->dealers()->whereKey($record->dealer_id)->exists()
+                );
+        }
+
+        return false;
+    }
+
     public static function getNavigationBadge(): ?string
     {
         $query = static::getScopedObservationQuery();

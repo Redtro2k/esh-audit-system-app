@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Observations\Tables;
 
 use App\Filament\Exports\ObservationExporter;
+use App\Filament\Resources\Observations\ObservationResource;
 use App\Filament\Tables\Columns\HoverImageColumn;
 use App\Mail\ForFutherDiscussion;
 use App\Mail\SendObservation;
@@ -281,9 +282,7 @@ class ObservationsTable
                 EditAction::make()
                     ->iconButton()
                     ->tooltip('Edit observation')
-                    ->hidden(fn ($record) => auth()->user()->hasRole('gm')
-                        || strtolower((string) $record->status) === 'resolved'
-                        || (int) $record->pic_id !== (int) auth()->id()),
+                    ->hidden(fn (Observation $record): bool => ! ObservationResource::canUpdateObservation($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
