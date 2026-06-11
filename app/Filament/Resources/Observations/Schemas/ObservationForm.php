@@ -505,13 +505,6 @@ PROMPT;
             return;
         }
 
-        if (blank($dealerId)) {
-            $set('pic_id', null);
-            $set('pic_assignment', null);
-
-            return;
-        }
-
         if (filled($currentPicId)) {
             $picStillMatchesSelection = self::buildPicQuery($departmentId, $dealerId)
                 ->whereKey($currentPicId)
@@ -526,18 +519,18 @@ PROMPT;
             }
         }
 
-        $firstPicAssignment = self::getFirstPicAssignment($departmentId, $dealerId);
+        $picAssignment = self::getOnlyPicAssignment($departmentId, $dealerId);
 
-        if (! $firstPicAssignment) {
+        if (! $picAssignment) {
             $set('pic_id', null);
             $set('pic_assignment', null);
 
             return;
         }
 
-        $set('dealer_id', $firstPicAssignment['dealer_id']);
-        $set('pic_id', $firstPicAssignment['pic_id']);
-        $set('pic_assignment', self::picAssignmentValue($firstPicAssignment['dealer_id'], $firstPicAssignment['pic_id']));
+        $set('dealer_id', $picAssignment['dealer_id']);
+        $set('pic_id', $picAssignment['pic_id']);
+        $set('pic_assignment', self::picAssignmentValue($picAssignment['dealer_id'], $picAssignment['pic_id']));
     }
 
     private static function getPicOptions(Get $get): array
@@ -611,19 +604,20 @@ PROMPT;
             ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', ['remediator', 'representative']));
     }
 
-    private static function getFirstPicAssignment(mixed $departmentId, mixed $dealerId = null): ?array
+    private static function getOnlyPicAssignment(mixed $departmentId, mixed $dealerId = null): ?array
     {
-        $dealer = self::buildDealerPicQuery($departmentId, $dealerId)->first();
-        $pic = $dealer?->users->first();
+        $assignments = self::buildDealerPicQuery($departmentId, $dealerId)
+            ->get()
+            ->flatMap(fn (Dealer $dealer) => $dealer->users->map(fn (User $user): array => [
+                'dealer_id' => $dealer->getKey(),
+                'pic_id' => $user->getKey(),
+            ]));
 
-        if (! $dealer || ! $pic) {
+        if ($assignments->count() !== 1) {
             return null;
         }
 
-        return [
-            'dealer_id' => $dealer->getKey(),
-            'pic_id' => $pic->getKey(),
-        ];
+        return $assignments->first();
     }
 
     private static function applyPicAssignment(mixed $state, Set $set): void
