@@ -257,3 +257,76 @@ test('user with contributor and remediator roles can see both owned and remediat
     expect(ObservationResource::canUpdateObservation($ownedObservation))->toBeTrue();
     expect(ObservationResource::canUpdateObservation($remediatorObservation))->toBeTrue();
 });
+
+test('mentioned user can see subscribed observation outside their department scope', function () {
+    Role::findOrCreate('remediator');
+    Role::findOrCreate('representative');
+
+    $misDepartment = Department::query()->create(['name' => 'MIS']);
+    $operationsDepartment = Department::query()->create(['name' => 'Operations']);
+
+    $dealerCreator = User::factory()->create([
+        'username' => 'mention-dealer-creator',
+        'department_id' => $misDepartment->id,
+    ]);
+
+    $misDealer = Dealer::query()->create([
+        'acronym' => 'MIS',
+        'name' => 'MIS Dealer',
+        'created_by' => $dealerCreator->id,
+    ]);
+
+    $operationsDealer = Dealer::query()->create([
+        'acronym' => 'OPS',
+        'name' => 'Operations Dealer',
+        'created_by' => $dealerCreator->id,
+    ]);
+
+    $mentionedUser = User::factory()->create([
+        'username' => 'fah',
+        'department_id' => $misDepartment->id,
+    ]);
+    $mentionedUser->assignRole('remediator');
+    $mentionedUser->dealers()->attach($misDealer);
+
+    $operationsRepresentative = User::factory()->create([
+        'username' => 'operations-pic',
+        'department_id' => $operationsDepartment->id,
+    ]);
+    $operationsRepresentative->assignRole('representative');
+    $operationsRepresentative->dealers()->attach($operationsDealer);
+
+    $auditor = User::factory()->create([
+        'username' => 'mention-auditor',
+        'department_id' => $operationsDepartment->id,
+    ]);
+
+    $concernCategory = ConcernCategory::query()->create(['name' => 'Mention Visibility']);
+
+    $otherDepartmentObservation = Observation::query()->create([
+        'area' => 'Operations concern mentioning FAH',
+        'pic_id' => $operationsRepresentative->id,
+        'dealer_id' => $operationsDealer->id,
+        'status' => 'pending',
+        'target_date' => null,
+        'concern_type' => (string) $concernCategory->id,
+        'concern' => 'Concern from another department',
+        'auditor_id' => $auditor->id,
+    ]);
+
+    $this->actingAs($mentionedUser);
+
+    expect(ObservationResource::getEloquentQuery()->pluck('id')->all())
+        ->not->toContain($otherDepartmentObservation->id);
+
+    $otherDepartmentObservation->comment(
+        'Please check this <span data-type="mention" data-id="'.$mentionedUser->id.'">@Ferdie Hipolito</span>.',
+        $auditor,
+    );
+
+    expect(ObservationResource::getEloquentQuery()->pluck('id')->all())
+        ->toContain($otherDepartmentObservation->id);
+
+    expect(ObservationResource::isMentionOnlyObservation($otherDepartmentObservation))->toBeTrue();
+    expect(ObservationResource::getNavigationBadge())->toBe('1 Pending');
+});

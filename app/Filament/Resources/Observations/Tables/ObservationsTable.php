@@ -36,8 +36,20 @@ class ObservationsTable
                 Group::make('pic.name')
                     ->label('PIC'),
             ])
+            ->recordClasses(fn (Observation $record): ?string => ObservationResource::isMentionOnlyObservation($record)
+                ? 'bg-sky-50/80 dark:bg-sky-950/30 border-l-4 border-sky-500'
+                : null)
             ->deferLoading()
             ->columns([
+                TextColumn::make('mention_indicator')
+                    ->label('Tag')
+                    ->state(fn (Observation $record): ?string => ObservationResource::isMentionOnlyObservation($record) ? 'Tagged' : null)
+                    ->badge()
+                    ->icon(LucideIcon::AtSign)
+                    ->color('info')
+                    ->placeholder('-')
+                    ->alignCenter()
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()

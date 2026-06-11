@@ -51,6 +51,7 @@ class AdminPanelProvider extends PanelProvider
             ->globalSearchKeyBindings(['mod+k'])
             ->globalSearchFieldKeyBindingSuffix()
             ->topbar()
+            ->font('Manrope')
             // ->registration(NewRegistration::class)
             ->colors([
                 'primary' => Color::adaptive(

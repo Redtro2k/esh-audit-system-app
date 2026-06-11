@@ -110,16 +110,27 @@ class ObservationResource extends Resource
             );
     }
 
+    public static function isMentionOnlyObservation(Observation $record, ?User $user = null): bool
+    {
+        $user ??= auth()->user();
+
+        if (! $user || ! static::isUserMentionedInObservation($record, $user)) {
+            return false;
+        }
+
+        return ! static::canViewObservationWithoutMention($record, $user);
+    }
+
     public static function getNavigationBadge(): ?string
     {
-        $query = static::getScopedObservationQuery();
+        $query = static::getBaseObservationQuery();
         $user = auth()->user();
 
         if (! $user) {
             return null;
         }
 
-        static::applyObservationVisibility($query, $user);
+        static::applyObservationVisibility($query, $user, includeSubscriptions: true);
 
         $pendingCount = $query->where('status', 'pending')->count();
 
@@ -131,7 +142,7 @@ class ObservationResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return static::applyObservationVisibility(
-            static::getScopedObservationQuery(),
+            static::getBaseObservationQuery(),
             auth()->user(),
             includeSubscriptions: true,
         );
@@ -139,7 +150,7 @@ class ObservationResource extends Resource
 
     public static function getScopedObservationQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['dealer', 'pic.department', 'pic', 'auditor']);
+        $query = static::getBaseObservationQuery();
         $user = auth()->user();
 
         if (! $user || $user->hasAnyRole(['developer', 'remediator', 'gm'])) {
@@ -155,27 +166,46 @@ class ObservationResource extends Resource
         return $query->whereIn('dealer_id', $dealerIds);
     }
 
+    protected static function getBaseObservationQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['dealer', 'pic.department', 'pic', 'auditor']);
+    }
+
     public static function applyObservationVisibility(Builder $query, ?User $user = null, bool $includeSubscriptions = false): Builder
     {
         if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasAnyRole(['developer', 'auditor', 'gm'])) {
+        if ($user->hasAnyRole(['developer', 'gm'])) {
             return $query;
         }
 
         $hasVisibilityRule = false;
 
         $query->where(function (Builder $visibility) use ($user, $includeSubscriptions, &$hasVisibilityRule) {
+            if ($user->hasRole('auditor')) {
+                $hasVisibilityRule = true;
+                $visibility->orWhere(fn (Builder $auditorQuery) => static::applyDealerVisibility(
+                    $auditorQuery,
+                    $user,
+                ));
+            }
+
             if ($user->hasRole('contributor')) {
                 $hasVisibilityRule = true;
-                $visibility->orWhere('auditor_id', $user->getKey());
+                $visibility->orWhere(fn (Builder $contributorQuery) => static::applyDealerVisibility(
+                    $contributorQuery,
+                    $user,
+                )->where('auditor_id', $user->getKey()));
             }
 
             if ($user->hasRole('representative')) {
                 $hasVisibilityRule = true;
-                $visibility->orWhere('pic_id', $user->getKey());
+                $visibility->orWhere(fn (Builder $representativeQuery) => static::applyDealerVisibility(
+                    $representativeQuery,
+                    $user,
+                )->where('pic_id', $user->getKey()));
             }
 
             if ($user->hasRole('remediator')) {
@@ -183,7 +213,14 @@ class ObservationResource extends Resource
                 $visibility->orWhere(fn (Builder $remediatorQuery) => static::applyRemediatorVisibility(
                     $remediatorQuery,
                     $user,
-                    $includeSubscriptions,
+                ));
+            }
+
+            if ($includeSubscriptions) {
+                $hasVisibilityRule = true;
+                $visibility->orWhere(fn (Builder $subscriptionQuery) => static::applySubscriptionVisibility(
+                    $subscriptionQuery,
+                    $user,
                 ));
             }
         });
@@ -193,9 +230,62 @@ class ObservationResource extends Resource
             : $query->whereRaw('1 = 0');
     }
 
-    protected static function applyRemediatorVisibility(Builder $query, User $user, bool $includeSubscriptions = false): Builder
+    protected static function applyDealerVisibility(Builder $query, User $user): Builder
     {
-        $subscriptionsTable = (new CommentSubscription)->getTable();
+        $dealerIds = $user->dealers()->pluck('dealers.id');
+
+        if ($dealerIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('dealer_id', $dealerIds);
+    }
+
+    protected static function canViewObservationWithoutMention(Observation $record, User $user): bool
+    {
+        if ($user->hasAnyRole(['developer', 'gm'])) {
+            return true;
+        }
+
+        if ($user->hasRole('auditor') && static::canAccessObservationDealer($record, $user)) {
+            return true;
+        }
+
+        if (
+            $user->hasRole('contributor')
+            && static::canAccessObservationDealer($record, $user)
+            && (int) $record->auditor_id === (int) $user->getKey()
+        ) {
+            return true;
+        }
+
+        if (
+            $user->hasRole('representative')
+            && static::canAccessObservationDealer($record, $user)
+            && (int) $record->pic_id === (int) $user->getKey()
+        ) {
+            return true;
+        }
+
+        return $user->hasRole('remediator')
+            && static::canRespondToObservation($record, $user);
+    }
+
+    protected static function canAccessObservationDealer(Observation $record, User $user): bool
+    {
+        return $user->dealers()->whereKey($record->dealer_id)->exists();
+    }
+
+    protected static function isUserMentionedInObservation(Observation $record, User $user): bool
+    {
+        return $record->comments()
+            ->where('body', 'like', '%data-type="mention"%')
+            ->where('body', 'like', '%data-id="'.$user->getKey().'"%')
+            ->exists();
+    }
+
+    protected static function applyRemediatorVisibility(Builder $query, User $user): Builder
+    {
         $dealerIds = $user->dealers()->pluck('dealers.id');
 
         if ($dealerIds->isEmpty()) {
@@ -204,27 +294,29 @@ class ObservationResource extends Resource
 
         return $query
             ->whereIn('dealer_id', $dealerIds)
-            ->where(function (Builder $scoped) use ($user, $includeSubscriptions, $subscriptionsTable) {
+            ->where(function (Builder $scoped) use ($user) {
                 $scoped
                     ->where('pic_id', $user->getKey())
                     ->orWhereHas('pic', fn (Builder $picQuery) => $picQuery
                         ->where('department_id', $user->department_id)
                         ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('name', 'representative')));
-
-                if (! $includeSubscriptions) {
-                    return;
-                }
-
-                $scoped->orWhereExists(function ($subQuery) use ($user, $subscriptionsTable) {
-                    $subQuery
-                        ->selectRaw('1')
-                        ->from($subscriptionsTable)
-                        ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
-                        ->where("{$subscriptionsTable}.subscribable_type", Observation::class)
-                        ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
-                        ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
-                });
             });
+    }
+
+    protected static function applySubscriptionVisibility(Builder $query, User $user): Builder
+    {
+        $subscriptionsTable = (new CommentSubscription)->getTable();
+        $observationMorphClass = (new Observation)->getMorphClass();
+
+        return $query->whereExists(function ($subQuery) use ($user, $subscriptionsTable, $observationMorphClass) {
+            $subQuery
+                ->selectRaw('1')
+                ->from($subscriptionsTable)
+                ->whereColumn("{$subscriptionsTable}.subscribable_id", 'observations.id')
+                ->where("{$subscriptionsTable}.subscribable_type", $observationMorphClass)
+                ->where("{$subscriptionsTable}.subscriber_id", $user->getKey())
+                ->where("{$subscriptionsTable}.subscriber_type", $user->getMorphClass());
+        });
     }
 
     public static function form(Schema $schema): Schema
