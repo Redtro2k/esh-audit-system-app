@@ -6,7 +6,9 @@ use App\Enum\NavigationGroup;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Filament\Resources\Users\Pages\ViewUser;
 use App\Filament\Resources\Users\Schemas\UserForm;
+use App\Filament\Resources\Users\Schemas\UsersInfolist;
 use App\Filament\Resources\Users\Tables\UsersTable;
 use App\Models\User;
 use BackedEnum;
@@ -15,6 +17,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class UserResource extends Resource
@@ -33,7 +36,7 @@ class UserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static bool $isGloballySearchable = false;
+    protected static bool $isGloballySearchable = true;
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -60,6 +63,11 @@ class UserResource extends Resource
         return static::canManageUsers() || static::canAssignTeams();
     }
 
+    public static function canView($record): bool
+    {
+        return static::canViewUsers();
+    }
+
     public static function canDelete($record): bool
     {
         return static::canManageUsers() && auth()->id() !== $record->getKey();
@@ -84,9 +92,33 @@ class UserResource extends Resource
         return UserForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return UsersInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return UsersTable::configure($table);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'username', 'email'];
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            '__avatar_url' => $record->getFilamentAvatarUrl(),
+            'Email' => $record->email,
+            'Department' => $record->department?->name ?? 'No department',
+        ];
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): ?string
+    {
+        return static::getUrl('view', ['record' => $record]);
     }
 
     public static function getPages(): array
@@ -94,6 +126,7 @@ class UserResource extends Resource
         return [
             'index' => ListUsers::route('/'),
             'create' => CreateUser::route('/create'),
+            'view' => ViewUser::route('/{record}'),
             'edit' => EditUser::route('/{record}/edit'),
         ];
     }

@@ -23,6 +23,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -80,8 +81,25 @@ class ObservationsTable
                     ->toggleable(),
                 TextColumn::make('auditor.name')
                     ->label('Auditor')
+                    ->html()
+                    ->formatStateUsing(function (?string $state, Observation $record): HtmlString {
+                        $auditor = $record->auditor;
+
+                        if (! $auditor) {
+                            return new HtmlString('<span class="text-gray-400 dark:text-gray-500">No auditor</span>');
+                        }
+
+                        $name = e($state ?: $auditor->name ?: $auditor->username ?: 'Unknown auditor');
+                        $avatarUrl = e($auditor->getFilamentAvatarUrl());
+
+                        return new HtmlString(<<<HTML
+                            <div class="flex items-center gap-1.5 min-w-0 text-xs">
+                                <img src="{$avatarUrl}" alt="{$name}" class="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700">
+                                <span class="truncate leading-5">{$name}</span>
+                            </div>
+                        HTML);
+                    })
                     ->sortable()
-                    ->limit(24)
                     ->tooltip(fn (?string $state) => $state)
                     ->toggleable(),
                 HoverImageColumn::make('capture_concern')

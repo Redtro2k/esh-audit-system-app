@@ -19,6 +19,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Kirschbaum\Commentions\CommentSubscription;
 use UnitEnum;
 
@@ -239,6 +240,49 @@ class ObservationResource extends Resource
     public static function table(Table $table): Table
     {
         return ObservationsTable::configure($table);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return [
+            'area',
+            'concern',
+            'status',
+            'dealer.name',
+            'pic.name',
+            'auditor.name',
+        ];
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Status' => ucwords(strtolower((string) $record->status)),
+            'Dealer' => $record->dealer?->name ?? 'No dealer',
+            'PIC' => $record->pic?->name ?? 'No PIC',
+            'Auditor' => $record->auditor?->name ?? 'No auditor',
+            'Target' => $record->target_date?->format('M j, Y g:i A') ?? 'No target date',
+            'Concern' => static::formatGlobalSearchText($record->concern ?: 'No concern details', 180),
+        ];
+    }
+
+    public static function modifyGlobalSearchQuery(Builder $query, string $search): void
+    {
+        $query->with(['dealer', 'pic', 'auditor']);
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): ?string
+    {
+        return static::getUrl('view', ['record' => $record]);
+    }
+
+    protected static function formatGlobalSearchText(?string $text, int $limit = 140): string
+    {
+        $text = (string) $text;
+        $text = str_replace(['\\r\\n', '\\n', '\\r'], ' ', $text);
+        $text = preg_replace('/\s*[*#>`_-]+\s*/', ' ', $text) ?: $text;
+
+        return str($text)->squish()->limit($limit)->toString();
     }
 
     public static function getRelations(): array
