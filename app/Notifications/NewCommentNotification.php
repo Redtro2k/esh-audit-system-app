@@ -7,6 +7,7 @@ use App\Models\Observation;
 use Filament\Actions\Action as FilamentNotificationAction;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -20,7 +21,13 @@ class NewCommentNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return config('commentions.notifications.mentions.channels', ['database']);
+        $channels = (array) config('commentions.notifications.mentions.channels', ['database']);
+
+        if (in_array('database', $channels, true) && ! in_array('broadcast', $channels, true)) {
+            $channels[] = 'broadcast';
+        }
+
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -34,6 +41,16 @@ class NewCommentNotification extends Notification
 
     public function toDatabase(object $notifiable): array
     {
+        return [
+            ...$this->filamentNotification()->getDatabaseMessage(),
+            'comment_id' => $this->commentId(),
+            'commentable_type' => data_get($this->comment, 'commentable_type'),
+            'commentable_id' => data_get($this->comment, 'commentable_id'),
+        ];
+    }
+
+    protected function filamentNotification(): FilamentNotification
+    {
         return FilamentNotification::make()
             ->title('You were mentioned in a comment')
             ->body($this->commentExcerpt())
@@ -41,8 +58,13 @@ class NewCommentNotification extends Notification
                 FilamentNotificationAction::make('open')
                     ->label('Open')
                     ->url($this->commentUrl()),
-            ])
-            ->getDatabaseMessage();
+            ]);
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return $this->filamentNotification()
+            ->getBroadcastMessage();
     }
 
     public function toArray(object $notifiable): array
@@ -55,6 +77,7 @@ class NewCommentNotification extends Notification
         $body = (string) (
             data_get($this->comment, 'comment')
             ?? data_get($this->comment, 'content')
+            ?? data_get($this->comment, 'body')
             ?? ''
         );
 
@@ -85,5 +108,12 @@ class NewCommentNotification extends Notification
         }
 
         return url('/admin');
+    }
+
+    protected function commentId(): mixed
+    {
+        return method_exists($this->comment, 'getId')
+            ? $this->comment->getId()
+            : data_get($this->comment, 'id');
     }
 }

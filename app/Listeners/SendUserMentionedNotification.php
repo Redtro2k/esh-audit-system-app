@@ -2,17 +2,14 @@
 
 namespace App\Listeners;
 
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
+use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Kirschbaum\Commentions\Events\UserWasMentionedEvent;
 use Kirschbaum\Commentions\Notifications\UserMentionedInComment;
 
-class SendUserMentionedNotification implements ShouldQueue
+class SendUserMentionedNotification
 {
-    use InteractsWithQueue;
-
     public function handle(UserWasMentionedEvent $event): void
     {
         if (! config('commentions.notifications.mentions.enabled', false)) {
@@ -22,6 +19,16 @@ class SendUserMentionedNotification implements ShouldQueue
         $channels = (array) config('commentions.notifications.mentions.channels', []);
 
         if (empty($channels)) {
+            return;
+        }
+
+        if (
+            in_array('database', $channels, true)
+            && $event->user->notifications()
+                ->where('type', (string) config('commentions.notifications.mentions.notification', UserMentionedInComment::class))
+                ->where('data->comment_id', $event->comment->getId())
+                ->exists()
+        ) {
             return;
         }
 
@@ -51,5 +58,9 @@ class SendUserMentionedNotification implements ShouldQueue
         $notification = app($notificationClass, ['comment' => $event->comment, 'channels' => $channels]);
 
         Notification::send($event->user, $notification);
+
+        if (in_array('database', $channels, true)) {
+            DatabaseNotificationsSent::dispatch($event->user);
+        }
     }
 }
