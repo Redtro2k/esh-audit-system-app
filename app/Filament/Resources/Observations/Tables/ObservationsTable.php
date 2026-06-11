@@ -244,10 +244,16 @@ class ObservationsTable
                     ->preload(),
                 Filter::make('created_at')
                     ->label('Created Date')
+                    ->default(fn (): array => [
+                        'from' => now()->startOfMonth()->toDateString(),
+                        'until' => now()->endOfMonth()->toDateString(),
+                    ])
                     ->form([
                         DatePicker::make('from')
+                            ->default(now()->startOfMonth())
                             ->native(false),
                         DatePicker::make('until')
+                            ->default(now()->endOfMonth())
                             ->native(false),
                     ])
                     ->query(fn ($query, $data) => $query
