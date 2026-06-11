@@ -67,9 +67,26 @@ class ObservationsTable
                     ->toggleable(),
                 TextColumn::make('pic.name')
                     ->label('PIC')
+                    ->html()
+                    ->formatStateUsing(function (?string $state, Observation $record): HtmlString {
+                        $pic = $record->pic;
+
+                        if (! $pic) {
+                            return new HtmlString('<span class="text-gray-400 dark:text-gray-500">No PIC</span>');
+                        }
+
+                        $name = e($state ?: $pic->name ?: $pic->username ?: 'Unknown PIC');
+                        $avatarUrl = e($pic->getFilamentAvatarUrl());
+
+                        return new HtmlString(<<<HTML
+                            <div class="flex items-center gap-1.5 min-w-0 text-xs">
+                                <img src="{$avatarUrl}" alt="{$name}" class="shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" style="width: 24px; height: 24px; max-width: 24px; max-height: 24px;">
+                                <span class="truncate leading-5">{$name}</span>
+                            </div>
+                        HTML);
+                    })
                     ->searchable()
                     ->sortable()
-                    ->limit(24)
                     ->tooltip(fn (?string $state) => $state)
                     ->toggleable(),
                 TextColumn::make('area')
@@ -94,7 +111,7 @@ class ObservationsTable
 
                         return new HtmlString(<<<HTML
                             <div class="flex items-center gap-1.5 min-w-0 text-xs">
-                                <img src="{$avatarUrl}" alt="{$name}" class="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700">
+                                <img src="{$avatarUrl}" alt="{$name}" class="shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" style="width: 24px; height: 24px; max-width: 24px; max-height: 24px;">
                                 <span class="truncate leading-5">{$name}</span>
                             </div>
                         HTML);

@@ -142,6 +142,7 @@ class ObservationForm
                                         ->options(fn (Get $get): array => self::getPicOptions($get))
                                         ->preload()
                                         ->native(false)
+                                        ->allowHtml()
                                         ->searchable()
                                         ->live()
                                         ->dehydrated(false)
@@ -562,7 +563,7 @@ PROMPT;
             ->mapWithKeys(fn (Dealer $dealer): array => [
                 $dealer->name => $dealer->users
                     ->mapWithKeys(fn (User $user): array => [
-                        self::picAssignmentValue($dealer->getKey(), $user->getKey()) => $user->name,
+                        self::picAssignmentValue($dealer->getKey(), $user->getKey()) => self::picOptionLabel($user),
                     ])
                     ->all(),
             ])
@@ -570,7 +571,10 @@ PROMPT;
 
         foreach (self::getCurrentUserPicAssignments($departmentId, self::resolveDealerId($get)) as $assignment) {
             $options[$assignment['dealer_name']] ??= [];
-            $options[$assignment['dealer_name']][self::picAssignmentValue($assignment['dealer_id'], $assignment['pic_id'])] = $assignment['pic_name'];
+            $options[$assignment['dealer_name']][self::picAssignmentValue($assignment['dealer_id'], $assignment['pic_id'])] = self::picOptionLabel(
+                user: auth()->user(),
+                name: $assignment['pic_name'],
+            );
         }
 
         return $options;
@@ -678,6 +682,19 @@ PROMPT;
     private static function picAssignmentValue(mixed $dealerId, mixed $picId): string
     {
         return "{$dealerId}:{$picId}";
+    }
+
+    private static function picOptionLabel(?User $user, ?string $name = null): string
+    {
+        $name = e($name ?: $user?->name ?: $user?->username ?: 'Unknown PIC');
+        $avatarUrl = e($user?->getFilamentAvatarUrl() ?? asset('favicon.svg'));
+
+        return <<<HTML
+            <div class="flex items-center gap-2 min-w-0">
+                <img src="{$avatarUrl}" alt="{$name}" class="shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" style="width: 24px; height: 24px; max-width: 24px; max-height: 24px;">
+                <span class="truncate">{$name}</span>
+            </div>
+        HTML;
     }
 
     private static function buildDepartmentQuery(mixed $dealerId = null): Builder
