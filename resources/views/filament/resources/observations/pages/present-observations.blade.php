@@ -201,25 +201,39 @@
                         </div>
 
                         <dl class="grid grid-cols-2 gap-4">
-                            <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+                            <div class="col-span-2 rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
                                 <dt class="text-lg font-medium text-gray-500 dark:text-gray-400">PIC</dt>
-                                <dd class="mt-2 text-2xl font-semibold text-gray-950 dark:text-white">
-                                    {{ $observation->pic?->name ?? 'No PIC' }}</dd>
+                                <dd
+                                    class="mt-2 flex min-w-0 items-center gap-3 text-2xl font-semibold leading-tight text-gray-950 dark:text-white">
+                                    @if ($observation->pic)
+                                        <img src="{{ $observation->pic->getFilamentAvatarUrl() }}"
+                                            alt="{{ $observation->pic->name ?? 'PIC' }}"
+                                            class="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" />
+                                    @endif
+                                    <span class="min-w-0 break-words">{{ $observation->pic?->name ?? 'No PIC' }}</span>
+                                </dd>
                             </div>
-                            <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+                            <div class="col-span-2 rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
                                 <dt class="text-lg font-medium text-gray-500 dark:text-gray-400">Auditor</dt>
-                                <dd class="mt-2 text-2xl font-semibold text-gray-950 dark:text-white">
-                                    {{ $observation->auditor?->name ?? 'No auditor' }}</dd>
+                                <dd
+                                    class="mt-2 flex min-w-0 items-center gap-3 text-2xl font-semibold leading-tight text-gray-950 dark:text-white">
+                                    @if ($observation->auditor)
+                                        <img src="{{ $observation->auditor->getFilamentAvatarUrl() }}"
+                                            alt="{{ $observation->auditor->name ?? 'Auditor' }}"
+                                            class="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" />
+                                    @endif
+                                    <span class="min-w-0 break-words">{{ $observation->auditor?->name ?? 'No auditor' }}</span>
+                                </dd>
                             </div>
                             <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
                                 <dt class="text-lg font-medium text-gray-500 dark:text-gray-400">Category</dt>
-                                <dd class="mt-2 text-2xl font-semibold text-gray-950 dark:text-white">
+                                <dd class="mt-2 text-xl font-semibold leading-snug text-gray-950 dark:text-white">
                                     {{ $observation->concernType?->name ?? 'No category' }}</dd>
                             </div>
                             <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
                                 <dt class="text-lg font-medium text-gray-500 dark:text-gray-400">Target Date</dt>
                                 <dd
-                                    class="mt-2 text-2xl font-semibold {{ $this->isOverdue($observation) ? 'text-red-600 dark:text-red-300' : 'text-gray-950 dark:text-white' }}">
+                                    class="mt-2 text-xl font-semibold leading-snug {{ $this->isOverdue($observation) ? 'text-red-600 dark:text-red-300' : 'text-gray-950 dark:text-white' }}">
                                     {{ $this->targetDateLabel($observation) }}
                                 </dd>
                             </div>
