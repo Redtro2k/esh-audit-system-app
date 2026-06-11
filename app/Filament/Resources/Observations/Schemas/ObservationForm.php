@@ -3,12 +3,14 @@
 namespace App\Filament\Resources\Observations\Schemas;
 
 use App\Models\ConcernCategory;
+use App\Models\Dealer;
 use App\Models\Department;
 use App\Models\User;
 use CodeWithDennis\FilamentLucideIcons\Enums\LucideIcon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
@@ -45,7 +47,7 @@ class ObservationForm
                                         ->placeholder('Select a dealer')
                                         ->helperText(fn (): string => self::currentUserMustUseAssignedDealer()
                                             ? 'This dealer is automatically assigned from your user account.'
-                                            : 'Choose the dealer for this observation.')
+                                            : 'Choose the dealer for this observation. Department and PIC options will follow this dealer.')
                                         ->relationship(
                                             'dealer',
                                             'name',
@@ -57,7 +59,7 @@ class ObservationForm
                                         ->searchable()
                                         ->preload()
                                         ->required()
-                                        ->hidden(fn (): bool => self::currentUserMustUseAssignedDealer())
+                                        ->hidden()
                                         ->disabled(fn (): bool => self::currentUserMustUseAssignedDealer())
                                         ->dehydrated()
                                         ->live()
@@ -96,7 +98,7 @@ class ObservationForm
                                     Select::make('department')
                                         ->label('Department')
                                         ->placeholder('Select a department')
-                                        ->helperText('Choose the department that owns this observation. Dealer selection will narrow the available departments.')
+                                        ->helperText('Choose the department that owns this observation. PIC options depend on the selected department and dealer.')
                                         ->native(false)
                                         ->options(fn (Get $get): array => self::getDepartmentOptions($get))
                                         ->live()
@@ -107,23 +109,36 @@ class ObservationForm
                                             }
                                         })
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                            $set('pic_id', null);
+
                                             self::syncPicSelection(
                                                 set: $set,
                                                 get: $get,
                                                 departmentId: $state,
                                             );
                                         })
-                                        ->disabled(fn (Get $get): bool => blank(self::resolveDealerId($get))),
-                                    Select::make('pic_id')
+                                        ->disabled(fn (): bool => false),
+                                    Hidden::make('pic_id'),
+                                    Select::make('pic_assignment')
                                         ->label('PIC')
                                         ->placeholder('Select PIC')
-                                        ->helperText('Pick the person in charge who will respond to this observation.')
+                                        ->helperText(fn (Get $get): string => self::getPicHelperText($get))
                                         ->options(fn (Get $get): array => self::getPicOptions($get))
                                         ->preload()
                                         ->native(false)
-                                        ->searchable(['name'])
+                                        ->searchable()
                                         ->live()
+                                        ->dehydrated(false)
                                         ->required()
+                                        ->afterStateHydrated(function (Set $set, $record): void {
+                                            if ($record?->dealer_id && $record?->pic_id) {
+                                                $set('pic_assignment', self::picAssignmentValue($record->dealer_id, $record->pic_id));
+                                                $set('pic_id', $record->pic_id);
+                                            }
+                                        })
+                                        ->afterStateUpdated(function ($state, Set $set): void {
+                                            self::applyPicAssignment($state, $set);
+                                        })
                                         ->disabled(fn (Get $get) => blank($get('department'))),
                                     TextInput::make('area')
                                         ->nullable(false)
@@ -417,12 +432,24 @@ PROMPT;
 
     private static function currentUserMustUseAssignedDealer(): bool
     {
-        return auth()->user()?->hasAnyRole(['auditor', 'contributor']) ?? false;
+        $user = auth()->user();
+
+        if (! $user?->hasAnyRole(['auditor', 'contributor'])) {
+            return false;
+        }
+
+        return $user->dealers()->count() === 1;
     }
 
     private static function currentUserDealerId(): ?int
     {
-        return auth()->user()?->dealers()->orderBy('dealers.name')->value('dealers.id');
+        $user = auth()->user();
+
+        if (! $user || $user->dealers()->count() !== 1) {
+            return null;
+        }
+
+        return $user->dealers()->orderBy('dealers.name')->value('dealers.id');
     }
 
     private static function syncDepartmentAndPicSelection(Set $set, Get $get, mixed $dealerId = null): void
@@ -434,6 +461,7 @@ PROMPT;
         if ($departmentOptions === []) {
             $set('department', null);
             $set('pic_id', null);
+            $set('pic_assignment', null);
 
             return;
         }
@@ -472,6 +500,14 @@ PROMPT;
 
         if (blank($departmentId)) {
             $set('pic_id', null);
+            $set('pic_assignment', null);
+
+            return;
+        }
+
+        if (blank($dealerId)) {
+            $set('pic_id', null);
+            $set('pic_assignment', null);
 
             return;
         }
@@ -482,14 +518,26 @@ PROMPT;
                 ->exists();
 
             if ($picStillMatchesSelection) {
+                if (filled($dealerId)) {
+                    $set('pic_assignment', self::picAssignmentValue($dealerId, $currentPicId));
+                }
+
                 return;
             }
         }
 
-        $firstPicId = self::buildPicQuery($departmentId, $dealerId)
-            ->value('id');
+        $firstPicAssignment = self::getFirstPicAssignment($departmentId, $dealerId);
 
-        $set('pic_id', $firstPicId);
+        if (! $firstPicAssignment) {
+            $set('pic_id', null);
+            $set('pic_assignment', null);
+
+            return;
+        }
+
+        $set('dealer_id', $firstPicAssignment['dealer_id']);
+        $set('pic_id', $firstPicAssignment['pic_id']);
+        $set('pic_assignment', self::picAssignmentValue($firstPicAssignment['dealer_id'], $firstPicAssignment['pic_id']));
     }
 
     private static function getPicOptions(Get $get): array
@@ -500,9 +548,35 @@ PROMPT;
             return [];
         }
 
-        return self::buildPicQuery($departmentId, self::resolveDealerId($get))
-            ->pluck('name', 'id')
+        return self::buildDealerPicQuery($departmentId, self::resolveDealerId($get))
+            ->get()
+            ->mapWithKeys(fn (Dealer $dealer): array => [
+                $dealer->name => $dealer->users
+                    ->mapWithKeys(fn (User $user): array => [
+                        self::picAssignmentValue($dealer->getKey(), $user->getKey()) => $user->name,
+                    ])
+                    ->all(),
+            ])
             ->all();
+    }
+
+    private static function getPicHelperText(Get $get): string
+    {
+        $departmentId = $get('department');
+
+        if (blank($departmentId)) {
+            return 'Pick the person in charge who will respond to this observation.';
+        }
+
+        if (self::buildDealerPicQuery($departmentId, self::resolveDealerId($get))->exists()) {
+            return 'PIC is selected from remediators or representatives assigned to this department and dealer.';
+        }
+
+        $dealerName = self::resolveDealerName($get);
+
+        return filled($dealerName)
+            ? "No PIC is available for this department and {$dealerName}. Assign a remediator or representative user to both first."
+            : 'No PIC is available for this department and dealer. Assign a remediator or representative user to both first.';
     }
 
     private static function buildPicQuery(mixed $departmentId, mixed $dealerId = null): Builder
@@ -520,25 +594,75 @@ PROMPT;
             ->whereHas('dealers', fn ($query) => $query->whereKey($dealerId));
     }
 
-    private static function buildDepartmentQuery(mixed $dealerId = null): Builder
+    private static function buildDealerPicQuery(mixed $departmentId, mixed $dealerId = null): Builder
     {
-        $query = Department::query()
-            ->whereHas('users', fn (Builder $query) => $query
-                ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', ['remediator', 'representative'])));
+        return Dealer::query()
+            ->visibleTo(auth()->user())
+            ->when(filled($dealerId), fn (Builder $query) => $query->whereKey($dealerId))
+            ->whereHas('users', fn (Builder $query) => self::applyPicUserConstraints($query, $departmentId))
+            ->with(['users' => fn ($query) => self::applyPicUserConstraints($query, $departmentId)->orderBy('name')])
+            ->orderBy('name');
+    }
 
-        if (blank($dealerId)) {
-            return $query->orderBy('name');
+    private static function applyPicUserConstraints($query, mixed $departmentId)
+    {
+        return $query
+            ->where('department_id', $departmentId)
+            ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', ['remediator', 'representative']));
+    }
+
+    private static function getFirstPicAssignment(mixed $departmentId, mixed $dealerId = null): ?array
+    {
+        $dealer = self::buildDealerPicQuery($departmentId, $dealerId)->first();
+        $pic = $dealer?->users->first();
+
+        if (! $dealer || ! $pic) {
+            return null;
         }
 
-        return $query
-            ->whereHas('users', fn (Builder $query) => $query
-                ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', ['remediator', 'representative']))
-                ->whereHas('dealers', fn ($dealerQuery) => $dealerQuery->whereKey($dealerId)))
-            ->orderBy('name');
+        return [
+            'dealer_id' => $dealer->getKey(),
+            'pic_id' => $pic->getKey(),
+        ];
+    }
+
+    private static function applyPicAssignment(mixed $state, Set $set): void
+    {
+        if (blank($state) || ! str_contains((string) $state, ':')) {
+            $set('pic_id', null);
+
+            return;
+        }
+
+        [$dealerId, $picId] = explode(':', (string) $state, 2);
+
+        $set('dealer_id', $dealerId);
+        $set('pic_id', $picId);
+    }
+
+    private static function picAssignmentValue(mixed $dealerId, mixed $picId): string
+    {
+        return "{$dealerId}:{$picId}";
+    }
+
+    private static function buildDepartmentQuery(mixed $dealerId = null): Builder
+    {
+        return Department::query()->orderBy('name');
     }
 
     private static function resolveDealerId(Get $get): mixed
     {
         return $get('dealer_id') ?: self::currentUserDealerId();
+    }
+
+    private static function resolveDealerName(Get $get): ?string
+    {
+        $dealerId = self::resolveDealerId($get);
+
+        if (blank($dealerId)) {
+            return null;
+        }
+
+        return Dealer::query()->whereKey($dealerId)->value('name');
     }
 }
