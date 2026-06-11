@@ -41,7 +41,8 @@
                 <img
                     src="{{ $avatarUrl }}"
                     alt="{{ $rawTitle }}"
-                    class="mt-0.5 h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700"
+                    class="mt-0.5 shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700"
+                    style="width: 36px; height: 36px; max-width: 36px; max-height: 36px;"
                     loading="lazy"
                 >
             @endif
