@@ -24,7 +24,10 @@ class CreateObservation extends CreateRecord
             $data['target_date'] = null;
         }
 
-        if (auth()->user()->hasAnyRole(['remediator', 'representative'])) {
+        if (
+            ! auth()->user()->hasAnyRole(['auditor', 'contributor'])
+            && auth()->user()->hasAnyRole(['remediator', 'representative'])
+        ) {
             $data['date_captured'] = now();
             $data['status'] = 'ongoing';
         }

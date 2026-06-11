@@ -184,3 +184,76 @@ test('remediator can see same dealer department observations while representativ
         ->not->toContain($sameDealerOtherDepartmentObservation->id)
         ->not->toContain($otherDepartmentObservation->id);
 });
+
+test('user with contributor and remediator roles can see both owned and remediator observations', function () {
+    Role::findOrCreate('contributor');
+    Role::findOrCreate('remediator');
+    Role::findOrCreate('representative');
+
+    $department = Department::query()->create(['name' => 'Service']);
+
+    $dealerCreator = User::factory()->create([
+        'username' => 'dual-role-dealer-creator',
+        'department_id' => $department->id,
+    ]);
+
+    $dealer = Dealer::query()->create([
+        'acronym' => 'SVC',
+        'name' => 'Service Dealer',
+        'created_by' => $dealerCreator->id,
+    ]);
+
+    $dualRoleUser = User::factory()->create([
+        'username' => 'dual-role-user',
+        'department_id' => $department->id,
+    ]);
+    $dualRoleUser->assignRole('contributor', 'remediator');
+    $dualRoleUser->dealers()->attach($dealer);
+
+    $representative = User::factory()->create([
+        'username' => 'dual-role-representative',
+        'department_id' => $department->id,
+    ]);
+    $representative->assignRole('representative');
+    $representative->dealers()->attach($dealer);
+
+    $otherContributor = User::factory()->create([
+        'username' => 'other-contributor',
+        'department_id' => $department->id,
+    ]);
+
+    $concernCategory = ConcernCategory::query()->create(['name' => 'Safety']);
+
+    $ownedObservation = Observation::query()->create([
+        'area' => 'Created by dual role user',
+        'pic_id' => $representative->id,
+        'dealer_id' => $dealer->id,
+        'status' => 'pending',
+        'target_date' => null,
+        'concern_type' => (string) $concernCategory->id,
+        'concern' => 'Contributor-owned concern',
+        'auditor_id' => $dualRoleUser->id,
+    ]);
+
+    $remediatorObservation = Observation::query()->create([
+        'area' => 'Assigned to dual role user',
+        'pic_id' => $dualRoleUser->id,
+        'dealer_id' => $dealer->id,
+        'status' => 'pending',
+        'target_date' => null,
+        'concern_type' => (string) $concernCategory->id,
+        'concern' => 'Remediator concern',
+        'auditor_id' => $otherContributor->id,
+    ]);
+
+    $this->actingAs($dualRoleUser);
+
+    $visibleIds = ObservationResource::getEloquentQuery()->pluck('id')->all();
+
+    expect($visibleIds)
+        ->toContain($ownedObservation->id)
+        ->toContain($remediatorObservation->id);
+
+    expect(ObservationResource::canUpdateObservation($ownedObservation))->toBeTrue();
+    expect(ObservationResource::canUpdateObservation($remediatorObservation))->toBeTrue();
+});

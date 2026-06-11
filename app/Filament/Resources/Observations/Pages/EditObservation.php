@@ -47,16 +47,25 @@ class EditObservation extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (! auth()->user()->hasAnyRole(['auditor', 'contributor'])) {
+        $record = $this->getRecord();
+        $isManagingAuditFields = ObservationResource::canManageAuditFields($record);
+        $isRespondingToObservation = ObservationResource::canRespondToObservation($record) && ! $isManagingAuditFields;
+
+        if (! $isManagingAuditFields) {
             $data['target_date'] = $this->getRecord()->target_date;
         }
 
-        if (auth()->user()->hasAnyRole(['remediator', 'representative'])) {
+        if ($isRespondingToObservation) {
             $data['date_captured'] = Carbon::now('Asia/Manila');
             $data['status'] = 'ongoing';
         }
 
-        if (auth()->user()->hasRole('contributor') && in_array(strtolower((string) $data['status']), ['for further discussion', 'resolved'], true)) {
+        if (
+            $isManagingAuditFields
+            && auth()->user()->hasRole('contributor')
+            && ! auth()->user()->hasRole('auditor')
+            && in_array(strtolower((string) $data['status']), ['for further discussion', 'resolved'], true)
+        ) {
             $data['status'] = $this->getRecord()->status;
         }
 
@@ -94,6 +103,6 @@ class EditObservation extends EditRecord
 
     protected function shouldShowObservationInfolist(): bool
     {
-        return ! auth()->user()->hasAnyRole(['auditor', 'contributor']);
+        return ! ObservationResource::canManageAuditFields($this->getRecord());
     }
 }

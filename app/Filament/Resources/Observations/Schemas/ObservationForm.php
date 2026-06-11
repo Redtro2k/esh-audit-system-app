@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Observations\Schemas;
 
+use App\Filament\Resources\Observations\ObservationResource;
 use App\Models\ConcernCategory;
 use App\Models\Dealer;
 use App\Models\Department;
@@ -39,7 +40,7 @@ class ObservationForm
                     ->tabs([
                         Tab::make('Audit')
                             ->icon(LucideIcon::ClipboardCheck)
-                            ->hidden(fn ($q) => auth()->user()->hasAnyRole(['remediator', 'representative']))
+                            ->hidden(fn ($record = null): bool => ! ObservationResource::canManageAuditFields($record))
                             ->schema([
                                 Grid::make(3)->schema([
                                     Select::make('dealer_id')
@@ -101,11 +102,26 @@ class ObservationForm
                                         ->helperText('Choose the department that owns this observation. PIC options depend on the selected department and dealer.')
                                         ->native(false)
                                         ->options(fn (Get $get): array => self::getDepartmentOptions($get))
+                                        ->default(fn (): ?int => self::currentUserShouldDefaultToOwnDepartment()
+                                            ? auth()->user()?->department_id
+                                            : null)
                                         ->live()
                                         ->dehydrated(false)
-                                        ->afterStateHydrated(function (Set $set, Get $get, $record) {
+                                        ->afterStateHydrated(function (Set $set, Get $get, $state, $record): void {
                                             if ($record?->pic?->department_id) {
                                                 $set('department', $record->pic->department_id);
+
+                                                return;
+                                            }
+
+                                            if (self::currentUserShouldDefaultToOwnDepartment() && blank($state)) {
+                                                $set('department', auth()->user()?->department_id);
+
+                                                self::syncPicSelection(
+                                                    set: $set,
+                                                    get: $get,
+                                                    departmentId: auth()->user()?->department_id,
+                                                );
                                             }
                                         })
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
@@ -171,7 +187,7 @@ class ObservationForm
                                             ->label('Date Captured')
                                             ->placeholder('Select capture date and time')
                                             ->helperText('Optional. Use this if you want to record when the observation was captured.')
-                                            ->hidden(fn () => auth()->user()->hasAnyRole(['remediator', 'representative']))
+                                            ->hidden(fn ($record = null): bool => ! ObservationResource::canManageAuditFields($record))
                                             ->hiddenOn('edit')
                                             ->nullable()
                                             ->native(false),
@@ -205,7 +221,7 @@ class ObservationForm
 
                             ]),
                         Tab::make('Counter Measure')
-                            ->hidden(fn ($q) => auth()->user()->hasAnyRole(['auditor', 'contributor']))
+                            ->hidden(fn ($record = null): bool => ! ObservationResource::canRespondToObservation($record))
                             ->icon(LucideIcon::ClipboardPen)
                             ->schema([
                                 FileUpload::make('capture_solved')
@@ -220,7 +236,7 @@ class ObservationForm
                                     ->maxSize(10240)
                                     ->imageEditor()
                                     ->helperText('Upload one or more images showing the corrective action or completed fix.')
-                                    ->required(auth()->user()->hasAnyRole(['remediator', 'representative'])),
+                                    ->required(fn ($record = null): bool => ObservationResource::canRespondToObservation($record)),
                                 Grid::make(2)
                                     ->schema([
                                         MarkdownEditor::make('counter_measure')
@@ -285,7 +301,7 @@ class ObservationForm
                                                     })
                                             )
                                             ->hint('Use AI to improve your wording while keeping the same meaning.')
-                                            ->required(auth()->user()->hasAnyRole(['remediator', 'representative'])),
+                                            ->required(fn ($record = null): bool => ObservationResource::canRespondToObservation($record)),
                                         MarkdownEditor::make('remarks')
                                             ->label('Remarks')
                                             ->helperText('Add supporting notes, clarifications, or important follow-up details.')
@@ -370,7 +386,7 @@ class ObservationForm
 
     private static function statusOptions(): array
     {
-        if (auth()->user()->hasRole('contributor')) {
+        if (auth()->user()->hasRole('contributor') && ! auth()->user()->hasRole('auditor')) {
             return [
                 'pending' => 'Pending',
                 'ongoing' => 'Ongoing',
@@ -541,7 +557,7 @@ PROMPT;
             return [];
         }
 
-        return self::buildDealerPicQuery($departmentId, self::resolveDealerId($get))
+        $options = self::buildDealerPicQuery($departmentId, self::resolveDealerId($get))
             ->get()
             ->mapWithKeys(fn (Dealer $dealer): array => [
                 $dealer->name => $dealer->users
@@ -551,6 +567,13 @@ PROMPT;
                     ->all(),
             ])
             ->all();
+
+        foreach (self::getCurrentUserPicAssignments($departmentId, self::resolveDealerId($get)) as $assignment) {
+            $options[$assignment['dealer_name']] ??= [];
+            $options[$assignment['dealer_name']][self::picAssignmentValue($assignment['dealer_id'], $assignment['pic_id'])] = $assignment['pic_name'];
+        }
+
+        return $options;
     }
 
     private static function getPicHelperText(Get $get): string
@@ -561,7 +584,10 @@ PROMPT;
             return 'Pick the person in charge who will respond to this observation.';
         }
 
-        if (self::buildDealerPicQuery($departmentId, self::resolveDealerId($get))->exists()) {
+        if (
+            self::buildDealerPicQuery($departmentId, self::resolveDealerId($get))->exists()
+            || self::getCurrentUserPicAssignments($departmentId, self::resolveDealerId($get)) !== []
+        ) {
             return 'PIC is selected from remediators or representatives assigned to this department and dealer.';
         }
 
@@ -575,7 +601,9 @@ PROMPT;
     private static function buildPicQuery(mixed $departmentId, mixed $dealerId = null): Builder
     {
         $baseQuery = User::query()
-            ->where('department_id', $departmentId)
+            ->where(fn (Builder $query) => $query
+                ->where('department_id', $departmentId)
+                ->orWhereNull('department_id'))
             ->whereHas('roles', fn (Builder $query) => $query->whereIn('name', ['remediator', 'representative']))
             ->orderBy('name');
 
@@ -600,18 +628,31 @@ PROMPT;
     private static function applyPicUserConstraints($query, mixed $departmentId)
     {
         return $query
-            ->where('department_id', $departmentId)
+            ->where(fn (Builder $userQuery) => $userQuery
+                ->where('department_id', $departmentId)
+                ->orWhereNull('department_id'))
             ->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', ['remediator', 'representative']));
     }
 
     private static function getOnlyPicAssignment(mixed $departmentId, mixed $dealerId = null): ?array
     {
-        $assignments = self::buildDealerPicQuery($departmentId, $dealerId)
+        $dealerAssignments = self::buildDealerPicQuery($departmentId, $dealerId)
             ->get()
             ->flatMap(fn (Dealer $dealer) => $dealer->users->map(fn (User $user): array => [
                 'dealer_id' => $dealer->getKey(),
                 'pic_id' => $user->getKey(),
             ]));
+
+        $currentUserAssignments = collect(self::getCurrentUserPicAssignments($departmentId, $dealerId))
+            ->map(fn (array $assignment): array => [
+                'dealer_id' => $assignment['dealer_id'],
+                'pic_id' => $assignment['pic_id'],
+            ]);
+
+        $assignments = $dealerAssignments
+            ->merge($currentUserAssignments)
+            ->unique(fn (array $assignment): string => $assignment['dealer_id'].':'.$assignment['pic_id'])
+            ->values();
 
         if ($assignments->count() !== 1) {
             return null;
@@ -642,6 +683,42 @@ PROMPT;
     private static function buildDepartmentQuery(mixed $dealerId = null): Builder
     {
         return Department::query()->orderBy('name');
+    }
+
+    private static function currentUserShouldDefaultToOwnDepartment(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) $user?->department_id
+            && $user->hasRole('contributor')
+            && $user->hasAnyRole(['remediator', 'representative']);
+    }
+
+    private static function getCurrentUserPicAssignments(mixed $departmentId, mixed $dealerId = null): array
+    {
+        $user = auth()->user();
+
+        if (
+            ! $user
+            || blank($departmentId)
+            || (filled($user->department_id) && (int) $user->department_id !== (int) $departmentId)
+            || ! $user->hasAnyRole(['remediator', 'representative'])
+        ) {
+            return [];
+        }
+
+        return Dealer::query()
+            ->visibleTo($user)
+            ->when(filled($dealerId), fn (Builder $query) => $query->whereKey($dealerId))
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Dealer $dealer): array => [
+                'dealer_id' => $dealer->getKey(),
+                'dealer_name' => $dealer->name,
+                'pic_id' => $user->getKey(),
+                'pic_name' => $user->name,
+            ])
+            ->all();
     }
 
     private static function resolveDealerId(Get $get): mixed

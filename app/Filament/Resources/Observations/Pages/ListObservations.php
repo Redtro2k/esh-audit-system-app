@@ -23,7 +23,8 @@ class ListObservations extends ListRecords
 
             CreateAction::make()
                 ->icon(LucideIcon::Plus)
-                ->hidden(auth()->user()->hasAnyRole(['remediator', 'representative', 'gm'])),
+                ->hidden(fn (): bool => auth()->user()->hasRole('gm')
+                    || ! auth()->user()->hasAnyRole(['auditor', 'contributor', 'developer'])),
         ];
     }
 }

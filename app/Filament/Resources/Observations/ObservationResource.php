@@ -58,28 +58,55 @@ class ObservationResource extends Resource
             return false;
         }
 
+        return static::canManageAuditFields($record, $user)
+            || static::canRespondToObservation($record, $user);
+    }
+
+    public static function canManageAuditFields(?Observation $record = null, ?User $user = null): bool
+    {
+        $user ??= auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole('developer') && ! $record) {
+            return true;
+        }
+
         if ($user->hasRole('auditor')) {
             return true;
         }
 
-        if ($user->hasRole('contributor')) {
-            return (int) $record->auditor_id === (int) $user->getKey();
+        if (! $user->hasRole('contributor')) {
+            return false;
         }
 
-        if ($user->hasRole('representative')) {
-            return (int) $record->pic_id === (int) $user->getKey();
+        return ! $record || (int) $record->auditor_id === (int) $user->getKey();
+    }
+
+    public static function canRespondToObservation(?Observation $record, ?User $user = null): bool
+    {
+        $user ??= auth()->user();
+
+        if (! $user || ! $record) {
+            return false;
         }
 
-        if ($user->hasRole('remediator')) {
-            return (int) $record->pic_id === (int) $user->getKey()
-                || (
-                    (int) $record->pic?->department_id === (int) $user->department_id
-                    && $record->pic?->hasRole('representative')
-                    && $user->dealers()->whereKey($record->dealer_id)->exists()
-                );
+        if ($user->hasRole('representative') && (int) $record->pic_id === (int) $user->getKey()) {
+            return true;
         }
 
-        return false;
+        if (! $user->hasRole('remediator')) {
+            return false;
+        }
+
+        return (int) $record->pic_id === (int) $user->getKey()
+            || (
+                (int) $record->pic?->department_id === (int) $user->department_id
+                && $record->pic?->hasRole('representative')
+                && $user->dealers()->whereKey($record->dealer_id)->exists()
+            );
     }
 
     public static function getNavigationBadge(): ?string
@@ -133,19 +160,36 @@ class ObservationResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasRole('remediator')) {
-            return static::applyRemediatorVisibility($query, $user, $includeSubscriptions);
+        if ($user->hasAnyRole(['developer', 'auditor', 'gm'])) {
+            return $query;
         }
 
-        if ($user->hasRole('representative')) {
-            return $query->where('pic_id', $user->getKey());
-        }
+        $hasVisibilityRule = false;
 
-        if ($user->hasRole('contributor')) {
-            return $query->where('auditor_id', $user->getKey());
-        }
+        $query->where(function (Builder $visibility) use ($user, $includeSubscriptions, &$hasVisibilityRule) {
+            if ($user->hasRole('contributor')) {
+                $hasVisibilityRule = true;
+                $visibility->orWhere('auditor_id', $user->getKey());
+            }
 
-        return $query;
+            if ($user->hasRole('representative')) {
+                $hasVisibilityRule = true;
+                $visibility->orWhere('pic_id', $user->getKey());
+            }
+
+            if ($user->hasRole('remediator')) {
+                $hasVisibilityRule = true;
+                $visibility->orWhere(fn (Builder $remediatorQuery) => static::applyRemediatorVisibility(
+                    $remediatorQuery,
+                    $user,
+                    $includeSubscriptions,
+                ));
+            }
+        });
+
+        return $hasVisibilityRule
+            ? $query
+            : $query->whereRaw('1 = 0');
     }
 
     protected static function applyRemediatorVisibility(Builder $query, User $user, bool $includeSubscriptions = false): Builder
