@@ -54,7 +54,10 @@
             </div>
         </aside>
 
-        <main class="esh-login-panel" aria-label="Sign in form">
+        <main @class([
+            'esh-login-panel',
+            'esh-login-panel-welcome' => $this->hasRememberedLoginProfile(),
+        ]) aria-label="Sign in form">
             <div class="esh-login-logo" aria-label="ESH Audit">
                 <img
                     class="esh-login-logo-light"

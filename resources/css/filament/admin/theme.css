@@ -287,6 +287,14 @@
     object-fit: contain;
 }
 
+.esh-login-panel-welcome {
+    gap: 20px;
+}
+
+.esh-login-panel-welcome .esh-login-logo img {
+    width: min(160px, 48%);
+}
+
 .esh-login-logo-dark {
     display: none;
 }
@@ -738,6 +746,10 @@
 
     .esh-login-logo img {
         width: min(220px, 78%);
+    }
+
+    .esh-login-panel-welcome .esh-login-logo img {
+        width: min(140px, 52%);
     }
 
     .esh-login-welcome-avatar {
