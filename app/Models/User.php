@@ -27,7 +27,8 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
         'department',
         'department_id',
         'team_id',
-        'username'
+        'username',
+        'last_login_at',
     ];
     protected $hidden = [
         'password',
@@ -39,6 +40,7 @@ class User extends Authenticatable implements HasAvatar, MustVerifyEmail, Commen
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

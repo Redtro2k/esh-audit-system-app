@@ -68,6 +68,32 @@
                 />
             </div>
 
+            @if ($this->hasRememberedLoginProfile())
+                <div class="esh-login-welcome-card" aria-label="Remembered login profile">
+                    <img
+                        src="{{ $this->rememberedLoginProfile['avatar_url'] ?? asset('favicon.svg') }}"
+                        alt=""
+                        class="esh-login-welcome-avatar"
+                    />
+
+                    <div class="esh-login-welcome-copy">
+                        <span>Welcome back</span>
+                        <strong>{{ $this->rememberedLoginProfile['name'] }}</strong>
+
+                        @if (filled($this->rememberedLoginProfile['last_login_at']))
+                            <p>
+                                Last signed in
+                                {{ \Illuminate\Support\Carbon::parse($this->rememberedLoginProfile['last_login_at'])->diffForHumans() }}
+                            </p>
+                        @endif
+                    </div>
+
+                    <button type="button" wire:click="useAnotherProfile" class="esh-login-profile-switch">
+                        Use another profile
+                    </button>
+                </div>
+            @endif
+
             <div class="esh-login-form-card">
                 {{ $this->content }}
             </div>

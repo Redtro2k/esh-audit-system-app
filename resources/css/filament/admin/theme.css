@@ -346,6 +346,65 @@
     gap: 18px;
 }
 
+.esh-login-welcome-card {
+    display: grid;
+    justify-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.esh-login-welcome-avatar {
+    width: 128px;
+    height: 128px;
+    border: 4px solid #ffffff;
+    border-radius: 999px;
+    object-fit: cover;
+    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
+}
+
+.esh-login-welcome-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.esh-login-welcome-copy span {
+    color: var(--toyota-red);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.esh-login-welcome-copy strong {
+    color: var(--toyota-charcoal);
+    font-size: 1.48rem;
+    line-height: 1.18;
+}
+
+.esh-login-welcome-copy p {
+    margin: 2px 0 0;
+    color: var(--toyota-gray);
+    font-size: 0.86rem;
+}
+
+.esh-login-profile-switch {
+    min-height: 42px;
+    width: 100%;
+    border: 1px solid rgba(88, 89, 91, 0.22);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: var(--toyota-charcoal);
+    background: #ffffff;
+    font-weight: 800;
+    transition: border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.esh-login-profile-switch:hover,
+.esh-login-profile-switch:focus-visible {
+    border-color: rgba(235, 10, 30, 0.5);
+    color: var(--toyota-red);
+    box-shadow: 0 0 0 3px rgba(235, 10, 30, 0.1);
+}
+
 .esh-login-form-card .fi-sc {
     gap: 18px;
 }
@@ -470,6 +529,25 @@
 
 .dark .esh-login-form-card .fi-input {
     color: #f9fafb;
+}
+
+.dark .esh-login-welcome-avatar {
+    border-color: #0f1318;
+    box-shadow: 0 18px 34px rgba(2, 6, 23, 0.5);
+}
+
+.dark .esh-login-welcome-copy strong {
+    color: #f9fafb;
+}
+
+.dark .esh-login-welcome-copy p {
+    color: #cbd5e1;
+}
+
+.dark .esh-login-profile-switch {
+    border-color: rgba(148, 163, 184, 0.28);
+    color: #f9fafb;
+    background: #111827;
 }
 
 .dark .esh-login-panel-footer {
@@ -660,6 +738,15 @@
 
     .esh-login-logo img {
         width: min(220px, 78%);
+    }
+
+    .esh-login-welcome-avatar {
+        width: 108px;
+        height: 108px;
+    }
+
+    .esh-login-welcome-copy strong {
+        font-size: 1.28rem;
     }
 
     .esh-login-panel-footer {

@@ -60,6 +60,13 @@ class UsersTable
                     ->badge()
                     ->separator(',')
                     ->searchable(),
+                TextColumn::make('last_login_at')
+                    ->label('Last Login')
+                    ->dateTime('M j, Y g:i A')
+                    ->since()
+                    ->sortable()
+                    ->placeholder('Never')
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

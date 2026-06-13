@@ -24,6 +24,23 @@ test('users can authenticate using the login screen', function () {
     $this->assertAuthenticated();
 });
 
+test('successful login records latest login and remembers the profile', function () {
+    $user = User::factory()->create([
+        'last_login_at' => null,
+    ]);
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertCookie('esh_last_login_profile');
+
+    expect($user->fresh()->last_login_at)->not->toBeNull();
+});
+
 test('users can not authenticate with invalid password', function () {
     $user = User::factory()->create();
 

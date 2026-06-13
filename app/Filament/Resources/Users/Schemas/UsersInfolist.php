@@ -51,6 +51,11 @@ class UsersInfolist
                                     ->badge()
                                     ->formatStateUsing(fn ($state): string => filled($state) ? 'Verified' : 'Unverified')
                                     ->color(fn ($state): string => filled($state) ? 'success' : 'gray'),
+                                TextEntry::make('last_login_at')
+                                    ->label('Last Login')
+                                    ->dateTime('M j, Y g:i A')
+                                    ->since()
+                                    ->placeholder('Never'),
                                 TextEntry::make('department.name')
                                     ->label('Department')
                                     ->placeholder('No department'),
