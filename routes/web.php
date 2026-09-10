@@ -1,22 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Prism\Prism\Facades\Prism;
 use Prism\Prism\Enums\Provider;
-
+use Prism\Prism\Facades\Prism;
 
 Route::get('/', function () {
-   return redirect('admin');
+    return redirect('admin');
 })->name('home');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
-
-Route::get('test-mail', function() {
-    $observation = \App\Models\Observation::with('pic', 'auditor', 'pic.department')->first();
-    return $observation->toArray();
-});
 
 // Route::get('ai-test', function() {
 //     try {

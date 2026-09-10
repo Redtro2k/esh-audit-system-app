@@ -19,6 +19,15 @@
                 :placeholder="__('Full name')"
             />
 
+            <flux:input
+                name="username"
+                :label="__('Username')"
+                :value="old('username')"
+                type="text"
+                required
+                autocomplete="username"
+            />
+
             <!-- Email Address -->
             <flux:input
                 name="email"

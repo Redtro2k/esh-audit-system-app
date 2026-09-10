@@ -33,6 +33,7 @@ class FindingOverview extends Page
                     DatePicker::make('startDate')
                         ->native(false),
                     DatePicker::make('endDate')
+                        ->afterOrEqual('startDate')
                         ->native(false),
                     Select::make('dealerId')
                         ->label('Company')

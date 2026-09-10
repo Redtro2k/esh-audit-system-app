@@ -2,7 +2,7 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
-@source '../../../../vendor/businesstilto/commentable/resources/css/plugin.css';
+@source '../../../../resources/views/livewire/summary-analytics.blade.php';
 @source '../../../../vendor/devonab/filament-easy-footer/resources/views/**/*';
 
 .fi-simple-layout:has(.esh-login-page) {
@@ -713,7 +713,7 @@
     }
 
     .esh-login-visual {
-        padding: 22px;
+        display: none;
     }
 
     .esh-login-hero {
@@ -742,6 +742,7 @@
     .esh-login-panel {
         gap: 22px;
         padding: 28px 22px 32px;
+        align-self: center;
     }
 
     .esh-login-logo img {
@@ -763,5 +764,84 @@
 
     .esh-login-panel-footer {
         display: grid;
+    }
+}
+
+/* Let long audit text shrink inside the panel's grid and flex layouts. */
+.fi-main,
+.fi-page,
+.fi-section,
+.fi-section-content,
+.esh-timeline-card,
+.presentation-stage section,
+.presentation-stage aside {
+    min-width: 0;
+}
+
+.esh-timeline-card,
+.presentation-stage aside,
+.esh-summary-content {
+    overflow-wrap: anywhere;
+}
+
+.esh-summary-content {
+    overflow-x: auto;
+}
+
+.presentation-stage:fullscreen {
+    overflow-y: auto;
+}
+
+@media (max-width: 639px) {
+    .fi-main {
+        padding-inline: 1rem;
+    }
+
+    .fi-header-heading {
+        font-size: 1.5rem;
+        overflow-wrap: anywhere;
+    }
+
+    .fi-page-header-main-ctn,
+    .fi-header-actions {
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    .fi-input,
+    .fi-select-input,
+    .fi-fo-textarea {
+        font-size: 1rem;
+    }
+
+    .presentation-stage {
+        padding: 0.75rem;
+    }
+
+    .presentation-stage h2 {
+        font-size: 1.875rem;
+    }
+
+    .presentation-stage aside {
+        padding-inline: 0.5rem;
+    }
+
+    .presentation-stage dl {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .presentation-stage dl > div {
+        grid-column: 1 / -1;
+    }
+
+    .presentation-stage dd,
+    .presentation-stage aside > div > p {
+        font-size: 1rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .esh-login-profile-switch {
+        transition: none;
     }
 }

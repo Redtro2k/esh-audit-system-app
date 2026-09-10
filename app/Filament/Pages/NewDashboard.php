@@ -9,7 +9,6 @@ use Filament\Pages\Dashboard\Concerns\HasFiltersAction;
 
 class NewDashboard extends BaseDashboard
 {
-
     use HasFiltersAction;
 
     protected function getHeaderActions(): array
@@ -18,12 +17,13 @@ class NewDashboard extends BaseDashboard
             FilterAction::make()
                 ->schema([
                     DatePicker::make('startDate')
-                    ->default(now()->startOfMonth())
-                    ->native(false),
+                        ->default(now()->startOfMonth())
+                        ->native(false),
                     DatePicker::make('endDate')
+                        ->afterOrEqual('startDate')
                         ->default(now()->endOfMonth())
-                    ->native(false),
-                ])
+                        ->native(false),
+                ]),
         ];
     }
 }

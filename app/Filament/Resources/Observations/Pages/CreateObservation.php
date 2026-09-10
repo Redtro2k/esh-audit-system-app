@@ -3,12 +3,16 @@
 namespace App\Filament\Resources\Observations\Pages;
 
 use App\Filament\Resources\Observations\ObservationResource;
+use App\Mail\SendObservation;
 use App\Models\Observation;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Mail;
+use YousefAman\FilamentAutosave\HasAutosaveForCreate;
 
 class CreateObservation extends CreateRecord
 {
+    use HasAutosaveForCreate;
+
     protected static string $resource = ObservationResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array
@@ -38,6 +42,6 @@ class CreateObservation extends CreateRecord
     protected function afterCreate(): void
     {
         $observation = Observation::with('pic', 'auditor', 'pic.department')->find($this->record->id);
-        Mail::to($observation->pic->email)->send(new \App\Mail\SendObservation($observation));
+        Mail::to($observation->pic->email)->send(new SendObservation($observation));
     }
 }

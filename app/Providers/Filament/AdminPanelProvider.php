@@ -4,8 +4,8 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\NewDashboard;
 use App\Filament\Pages\NewLogin;
-use App\Filament\Pages\NewRegistration;
 use App\Filament\Pages\Profile;
+use App\Filament\Resources\Observations\ObservationResource;
 use App\Filament\Resources\Teams\TeamResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Widgets\LatestOngoing;
@@ -21,7 +21,9 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color as FilamentColor;
 use Filament\Support\Enums\Width;
 use Filament\Widgets\AccountWidget;
+use Hammadzafar05\FilamentMobilePreset\FilamentMobilePresetPlugin;
 use Hammadzafar05\MobileBottomNav\MobileBottomNav;
+use Hammadzafar05\MobileBottomNav\MobileBottomNavItem;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -30,7 +32,10 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
+use Martin6363\FilamentClickSpark\FilamentClickSparkPlugin;
 use Openplain\FilamentShadcnTheme\Color;
+use YousefAman\FilamentAutosave\AutosavePlugin;
+use Ysfkaya\ShipLog\ShipLogPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -38,9 +43,11 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->brandName('ESH AUDIT')
-            ->brandLogo(Storage::disk('public')->url('logo/esh-logo-black.png'))
-            ->darkModeBrandLogo(Storage::disk('public')->url('logo/esh-logo-white.png'))
-            ->brandLogoHeight('4.5rem')
+            ->brandLogo(fn (): ?string => Storage::disk('public')->exists('logo/esh-logo-black.png')
+                ? Storage::disk('public')->url('logo/esh-logo-black.png') : null)
+            ->darkModeBrandLogo(fn (): ?string => Storage::disk('public')->exists('logo/esh-logo-white.png')
+                ? Storage::disk('public')->url('logo/esh-logo-white.png') : null)
+            ->brandLogoHeight('2.75rem')
             ->default()
             ->id('admin')
             ->path('admin')
@@ -91,19 +98,30 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentApexChartsPlugin::make(),
-                MobileBottomNav::make(),
+                FilamentMobilePresetPlugin::make()
+                    ->bottomNav(MobileBottomNav::make()->items([
+                        MobileBottomNavItem::make('Dashboard')
+                            ->icon('heroicon-o-home')
+                            ->url(fn (): string => NewDashboard::getUrl())
+                            ->isActive(fn (): bool => request()->routeIs('filament.admin.pages.dashboard')),
+                        MobileBottomNavItem::make('Observations')
+                            ->icon('heroicon-o-clipboard-document-list')
+                            ->url(fn (): string => ObservationResource::getUrl())
+                            ->visible(fn (): bool => ObservationResource::canViewAny())
+                            ->isActive(fn (): bool => request()->routeIs('filament.admin.resources.observations.*')),
+                    ])),
+                FilamentClickSparkPlugin::make()
+                    ->targetSelectors('.fi-btn, .fi-icon-btn, .fi-ac-btn'),
+                AutosavePlugin::make()->debounce(2000),
+                ShipLogPlugin::make()
+                    ->usingMarkdown(base_path('CHANGELOG.md'))
+                    ->navigationLabel('What’s new')
+                    ->navigationSort(100)
+                    ->fab(enabled: false)
+                    ->authorizeView(fn (): bool => auth()->check())
+                    ->authorizeManage(fn (): bool => auth()->user()?->hasRole('developer') ?? false),
                 GlobalSearchModalPlugin::make(),
-                EasyFooterPlugin::make()
-                    ->withLogo(
-                        file_exists(public_path('logo/logo-esh.png'))
-                            ? asset('logo/logo-esh.png')
-                            : Storage::disk('public')->url('Images/Logo_desktop.png')
-                    )
-                    ->withLinks([
-                        ['title' => 'About', 'url' => 'https://example.com/about'],
-                        ['title' => 'CGV', 'url' => 'https://example.com/cgv'],
-                        ['title' => 'Privacy Policy', 'url' => 'https://example.com/privacy-policy'],
-                    ]),
+                EasyFooterPlugin::make(),
             ])
             ->authMiddleware([
                 Authenticate::class,

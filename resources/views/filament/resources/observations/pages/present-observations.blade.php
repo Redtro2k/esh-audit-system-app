@@ -1,7 +1,6 @@
 @php
-    $observations = $this->getPresentationObservations();
-    $observation = $this->getCurrentObservation();
-    $totalSlides = $observations->count();
+    $totalSlides = $this->getPresentationCount();
+    $observation = $this->getCurrentObservation($totalSlides);
     $currentSlide = $totalSlides > 0 ? $this->slide + 1 : 0;
     $concernImages = $observation ? $this->imageUrls($observation->capture_concern) : [];
     $solvedImages = $observation ? $this->imageUrls($observation->capture_solved) : [];
@@ -10,17 +9,25 @@
 
 <x-filament-panels::page>
     <div x-data="{
-        toggleFullscreen() {
+        async toggleFullscreen() {
+            if (!document.fullscreenEnabled) return;
+            try {
             if (document.fullscreenElement) {
-                document.exitFullscreen()
+                await document.exitFullscreen()
     
                 return
             }
     
-            this.$refs.stage.requestFullscreen()
+            await this.$refs.stage.requestFullscreen()
+            } catch (error) {
+                // Fullscreen may be unavailable in mobile or embedded browsers.
+            }
         },
-    }" x-on:keydown.window.arrow-left="$wire.previousSlide()"
-        x-on:keydown.window.arrow-right="$wire.nextSlide()" x-ref="stage"
+        isEditing(event) {
+            return event.target.closest('input, textarea, select, [contenteditable], [role=combobox]');
+        },
+    }" x-on:keydown.window.arrow-left="if (!isEditing($event)) $wire.previousSlide()"
+        x-on:keydown.window.arrow-right="if (!isEditing($event)) $wire.nextSlide()" x-ref="stage"
         class="presentation-stage relative min-h-[calc(100vh-12rem)] overflow-hidden bg-white p-4 text-gray-950 dark:bg-gray-950 dark:text-white sm:p-6">
         <style>
             .presentation-stage> :not(style):not(.presentation-watermark) {
@@ -60,9 +67,11 @@
             }
         </style>
 
+        @if (Storage::disk('public')->exists('logo/toyota.png'))
         <div class="presentation-watermark" aria-hidden="true">
             <img src="{{ Storage::url('logo/toyota.png') }}" alt="Toyota logo watermark" />
         </div>
+        @endif
 
         <div
             class="presentation-filters border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/80">
@@ -120,7 +129,7 @@
                         </span>
                     </div>
 
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <a href="{{ \App\Filament\Resources\Observations\ObservationResource::getUrl('view', ['record' => $observation]) }}"
                             target="_blank" rel="noreferrer"
                             class="rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
@@ -151,7 +160,7 @@
                                     @forelse ($concernImages as $imageUrl)
                                         <a href="{{ $imageUrl }}" target="_blank" rel="noreferrer"
                                             class="block overflow-hidden rounded-md bg-white dark:bg-gray-950">
-                                            <img src="{{ $imageUrl }}" alt="Concern proof"
+                                            <img src="{{ $imageUrl }}" alt="Concern proof" loading="lazy" decoding="async"
                                                 class="h-full min-h-72 w-full object-contain" />
                                         </a>
                                     @empty
@@ -174,7 +183,7 @@
                                     @forelse ($solvedImages as $imageUrl)
                                         <a href="{{ $imageUrl }}" target="_blank" rel="noreferrer"
                                             class="block overflow-hidden rounded-md bg-white dark:bg-gray-950">
-                                            <img src="{{ $imageUrl }}" alt="Solved proof"
+                                            <img src="{{ $imageUrl }}" alt="Solved proof" loading="lazy" decoding="async"
                                                 class="h-full min-h-72 w-full object-contain" />
                                         </a>
                                     @empty

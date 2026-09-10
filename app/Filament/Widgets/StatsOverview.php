@@ -18,6 +18,8 @@ class StatsOverview extends StatsOverviewWidget
 
     protected ?string $heading = 'Audit statistics';
 
+    protected ?string $pollingInterval = '60s';
+
     public function persistsFiltersInSession(): bool
     {
         return false;
@@ -50,8 +52,8 @@ class StatsOverview extends StatsOverviewWidget
 
     public function getStatusCounts(): array
     {
-        $startDate = $this->pageFilters['startDate'] ?? now()->startOfMonth();
-        $endDate = $this->pageFilters['endDate'] ?? now()->endOfMonth();
+        $startDate = Carbon::parse($this->pageFilters['startDate'] ?? now()->startOfMonth())->startOfDay();
+        $endDate = Carbon::parse($this->pageFilters['endDate'] ?? now()->endOfMonth())->endOfDay();
         $dealerIds = $this->getVisibleDealerIds();
 
         return ObservationAnalyticsCache::remember(

@@ -23,9 +23,9 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
 
 class ObservationsTable
 {
@@ -92,7 +92,7 @@ class ObservationsTable
 
                         return new HtmlString(<<<HTML
                             <div class="flex items-center gap-1.5 min-w-0 text-xs">
-                                <img src="{$avatarUrl}" alt="{$name}" class="shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" style="width: 24px; height: 24px; max-width: 24px; max-height: 24px;">
+                                <img loading="lazy" decoding="async" src="{$avatarUrl}" alt="{$name}" class="shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" style="width: 24px; height: 24px; max-width: 24px; max-height: 24px;">
                                 <span class="truncate leading-5">{$name}</span>
                             </div>
                         HTML);
@@ -123,7 +123,7 @@ class ObservationsTable
 
                         return new HtmlString(<<<HTML
                             <div class="flex items-center gap-1.5 min-w-0 text-xs">
-                                <img src="{$avatarUrl}" alt="{$name}" class="shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" style="width: 24px; height: 24px; max-width: 24px; max-height: 24px;">
+                                <img loading="lazy" decoding="async" src="{$avatarUrl}" alt="{$name}" class="shrink-0 rounded-full object-cover ring-1 ring-gray-200 dark:ring-gray-700" style="width: 24px; height: 24px; max-width: 24px; max-height: 24px;">
                                 <span class="truncate leading-5">{$name}</span>
                             </div>
                         HTML);

@@ -106,7 +106,7 @@ class ObservationResource extends Resource
             || (
                 (int) $record->pic?->department_id === (int) $user->department_id
                 && $record->pic?->hasRole('representative')
-                && $user->dealers()->whereKey($record->dealer_id)->exists()
+                && static::canAccessObservationDealer($record, $user)
             );
     }
 
@@ -114,11 +114,11 @@ class ObservationResource extends Resource
     {
         $user ??= auth()->user();
 
-        if (! $user || ! static::isUserMentionedInObservation($record, $user)) {
+        if (! $user || static::canViewObservationWithoutMention($record, $user)) {
             return false;
         }
 
-        return ! static::canViewObservationWithoutMention($record, $user);
+        return static::isUserMentionedInObservation($record, $user);
     }
 
     public static function getNavigationBadge(): ?string
@@ -141,11 +141,22 @@ class ObservationResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return static::applyObservationVisibility(
+        $user = auth()->user();
+        $user?->loadMissing('dealers');
+
+        $query = static::applyObservationVisibility(
             static::getBaseObservationQuery(),
-            auth()->user(),
+            $user,
             includeSubscriptions: true,
         );
+
+        if ($user) {
+            $query->withExists(['comments as mentions_current_user' => fn (Builder $comments) => $comments
+                ->where('body', 'like', '%data-type="mention"%')
+                ->where('body', 'like', '%data-id="'.$user->getKey().'"%')]);
+        }
+
+        return $query;
     }
 
     public static function getScopedObservationQuery(): Builder
@@ -168,7 +179,7 @@ class ObservationResource extends Resource
 
     protected static function getBaseObservationQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['dealer', 'pic.department', 'pic', 'auditor']);
+        return parent::getEloquentQuery()->with(['dealer', 'pic.department', 'pic.roles', 'auditor']);
     }
 
     public static function applyObservationVisibility(Builder $query, ?User $user = null, bool $includeSubscriptions = false): Builder
@@ -273,11 +284,19 @@ class ObservationResource extends Resource
 
     protected static function canAccessObservationDealer(Observation $record, User $user): bool
     {
+        if ($user->relationLoaded('dealers')) {
+            return $user->dealers->contains('id', $record->dealer_id);
+        }
+
         return $user->dealers()->whereKey($record->dealer_id)->exists();
     }
 
     protected static function isUserMentionedInObservation(Observation $record, User $user): bool
     {
+        if ((int) $user->getKey() === (int) auth()->id() && array_key_exists('mentions_current_user', $record->getAttributes())) {
+            return (bool) $record->getAttribute('mentions_current_user');
+        }
+
         return $record->comments()
             ->where('body', 'like', '%data-type="mention"%')
             ->where('body', 'like', '%data-id="'.$user->getKey().'"%')

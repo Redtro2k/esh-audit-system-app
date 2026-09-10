@@ -59,6 +59,7 @@
             'esh-login-panel-welcome' => $this->hasRememberedLoginProfile(),
         ]) aria-label="Sign in form">
             <div class="esh-login-logo" aria-label="ESH Audit">
+                @if (\Illuminate\Support\Facades\Storage::disk('public')->exists('logo/esh-logo-black.png') && \Illuminate\Support\Facades\Storage::disk('public')->exists('logo/esh-logo-white.png'))
                 <img
                     class="esh-login-logo-light"
                     src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url('logo/esh-logo-black.png') }}"
@@ -69,6 +70,9 @@
                     src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url('logo/esh-logo-white.png') }}"
                     alt="ESH Audit logo"
                 />
+                @else
+                    <h1 class="text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">ESH AUDIT</h1>
+                @endif
             </div>
 
             @if ($this->hasRememberedLoginProfile())

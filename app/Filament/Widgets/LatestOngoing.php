@@ -16,6 +16,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 class LatestOngoing extends TableWidget
 {
@@ -23,7 +24,7 @@ class LatestOngoing extends TableWidget
 
     protected static ?int $sort = 2;
 
-    protected int|string|array $columnSpan = 2;
+    protected int|string|array $columnSpan = 'full';
 
     protected ?string $title = 'Latest ongoing audits';
 
@@ -36,8 +37,8 @@ class LatestOngoing extends TableWidget
 
     public function table(Table $table): Table
     {
-        $startDate = $this->pageFilters['startDate'] ?? now()->startOfMonth();
-        $endDate = $this->pageFilters['endDate'] ?? now()->endOfMonth();
+        $startDate = Carbon::parse($this->pageFilters['startDate'] ?? now()->startOfMonth())->startOfDay();
+        $endDate = Carbon::parse($this->pageFilters['endDate'] ?? now()->endOfMonth())->endOfDay();
         $dealerId = $this->pageFilters['dealerId'] ?? null;
 
         return $table
@@ -88,6 +89,7 @@ class LatestOngoing extends TableWidget
                                 default => 'secondary',
                             }),
                         TextColumn::make('timeline_meta')
+                            ->wrap()
                             ->label('')
                             ->state(fn (Observation $record): string => sprintf(
                                 '%s / %s',
@@ -96,10 +98,12 @@ class LatestOngoing extends TableWidget
                             ))
                             ->color('gray'),
                         TextColumn::make('timeline_lead')
+                            ->wrap()
                             ->label('')
                             ->state(fn (Observation $record): string => 'Lead Time: '.($this->resolveLeadTimeByStatus($record) ?? 'No lead time'))
                             ->color('gray'),
                         TextColumn::make('auditor.name')
+                            ->wrap()
                             ->label('')
                             ->prefix('Auditor: ')
                             ->color('gray')

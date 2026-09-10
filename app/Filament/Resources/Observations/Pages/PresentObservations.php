@@ -168,7 +168,7 @@ class PresentObservations extends Page
 
     public function nextSlide(): void
     {
-        $this->slide = min(max(0, $this->getPresentationObservations()->count() - 1), $this->slide + 1);
+        $this->slide = min(max(0, $this->getPresentationCount() - 1), $this->slide + 1);
     }
 
     public function resetFilters(): void
@@ -186,26 +186,26 @@ class PresentObservations extends Page
         $this->slide = 0;
     }
 
-    public function getPresentationObservations(): Collection
+    public function getPresentationCount(): int
     {
         return $this->baseQuery()
-            ->get()
-            ->values();
+            ->reorder()
+            ->count();
     }
 
-    public function getCurrentObservation(): ?Observation
+    public function getCurrentObservation(?int $count = null): ?Observation
     {
-        $observations = $this->getPresentationObservations();
+        $count ??= $this->getPresentationCount();
 
-        if ($observations->isEmpty()) {
+        if ($count === 0) {
             $this->slide = 0;
 
             return null;
         }
 
-        $this->clampSlide($observations->count());
+        $this->clampSlide($count);
 
-        return $observations->get($this->slide);
+        return $this->baseQuery()->offset($this->slide)->first();
     }
 
     public function getDealerOptions(): Collection
@@ -298,12 +298,13 @@ class PresentObservations extends Page
             ->orderByRaw("case when status != 'resolved' and target_date is not null and target_date < ? then 0 else 1 end", [now()])
             ->orderByRaw('case when target_date is null then 1 else 0 end')
             ->orderBy('target_date')
-            ->orderByRaw('coalesce(date_captured, created_at) desc');
+            ->orderByRaw('coalesce(date_captured, created_at) desc')
+            ->orderBy('observations.id');
     }
 
     protected function clampSlide(?int $count = null): void
     {
-        $count ??= $this->getPresentationObservations()->count();
+        $count ??= $this->getPresentationCount();
 
         if ($count <= 0) {
             $this->slide = 0;

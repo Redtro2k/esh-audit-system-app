@@ -15,6 +15,8 @@ class AnalyticsOverview extends StatsOverviewWidget
 {
     use InteractsWithPageFilters;
 
+    protected ?string $pollingInterval = '60s';
+
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::AuditManagement;
 
     protected function getHeading(): ?string
