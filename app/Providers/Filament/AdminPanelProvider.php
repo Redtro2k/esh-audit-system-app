@@ -111,7 +111,7 @@ class AdminPanelProvider extends PanelProvider
                             ->isActive(fn (): bool => request()->routeIs('filament.admin.resources.observations.*')),
                     ])),
                 FilamentClickSparkPlugin::make()
-                    ->targetSelectors('.fi-btn, .fi-icon-btn, .fi-ac-btn'),
+                    ->clickAnywhere(true),
                 AutosavePlugin::make()->debounce(2000),
                 ShipLogPlugin::make()
                     ->usingMarkdown(base_path('CHANGELOG.md'))

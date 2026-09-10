@@ -5,7 +5,7 @@
 ### Added
 - Restorable drafts when creating observations. Text and selections save after a short pause; attach photos again after restoring a draft.
 - A What's new page for product updates.
-- Subtle click feedback on action buttons, respecting reduced motion preferences.
+- Subtle click feedback throughout the panel, including navigation menus, respecting reduced motion preferences.
 
 ### Changed
 - Mobile navigation, stacked table rows, larger touch targets and slide-over forms.

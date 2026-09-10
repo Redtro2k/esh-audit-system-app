@@ -4,7 +4,7 @@
 
 - `hammadzafar05/filament-mobile-preset` replaces the direct bottom-nav dependency and registration. The preset still requires `hammadzafar05/mobile-bottom-nav` internally. Dashboard, Observations, and More are available at the bottom of mobile screens.
 - `ysfkaya/filament-shiplog` reads `CHANGELOG.md` and displays it under What's new. Only signed-in users can read it; cache management is restricted to developers.
-- `martin6363/filament-click-spark` adds feedback to action buttons and respects reduced motion preferences.
+- `martin6363/filament-click-spark` adds feedback to all panel clicks, including sidebar navigation, mobile navigation, links, and buttons. It respects reduced motion preferences.
 - `yousefaman/filament-autosave` saves new observation drafts after two seconds of inactivity. Drafts are private to the user and expire after 24 hours. Restore or discard a draft when returning to the create page. Uploaded photos must be reattached. Existing-record edits still use the normal validated Save workflow.
 
 Filament, Livewire, Laravel, and compatible dependencies were updated in `composer.lock`. The missing Pusher PHP server dependency was added for the application's configured broadcaster.
